@@ -143,26 +143,14 @@ google-cloud-vision: Google Cloud Vision API ile görüntü analizi için Google
 
 🚀 Hızlı Kurulum Rehberi
 1. Depoyu Klonlayın
-git clone https://github.com/stixyie/Nyxie-Protogen-Chatbot-Telegram-v4-main.git
-cd Nyxie-Protogen-Chatbot-Telegram-v4-main
-content_copy
-download
-Use code with caution.
-Bash
+git clone https://github.com/stixyie/Nyxie-Protogen-Chatbot-Telegram-v8-main.git
+cd Nyxie-Protogen-Chatbot-Telegram-v8-main
 2. Sanal Ortamı Aktifleştirin
 python -m venv venv
 source venv/bin/activate  # Linux/macOS için
 venv\Scripts\activate.bat     # Windows için
-content_copy
-download
-Use code with caution.
-Bash
 3. Bağımlılıkları Yükleyin
 pip install -r requirements.txt
-content_copy
-download
-Use code with caution.
-Bash
 🔑 API Anahtarlarını Yapılandırın
 
 .env dosyasını açarak aşağıdaki API anahtarlarını girin:
