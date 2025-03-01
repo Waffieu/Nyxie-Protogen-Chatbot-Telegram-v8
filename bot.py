@@ -51,7 +51,7 @@ if not api_key:
 try:
     genai.configure(api_key=api_key)
     # Test the configuration with a simple generation
-    model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
+    model = genai.GenerativeModel('gemini-2.0-flash-lite')
     logging.info("Gemini API configured successfully")
 except Exception as e:
     logging.error(f"Failed to configure Gemini API: {str(e)}")
@@ -59,7 +59,7 @@ except Exception as e:
 
 # Time-aware personality context
 def get_time_aware_personality(current_time, user_lang, timezone_name):
-    """Generate a dynamic, context-aware personality prompt"""
+    """Generate a dynamic, ultra-complex Protogen furry fox personality prompt"""
     local_time = current_time.astimezone(ZoneInfo(timezone_name))
 
     # Get detailed time context
@@ -68,9 +68,8 @@ def get_time_aware_personality(current_time, user_lang, timezone_name):
     weekday = calendar.day_name[local_time.weekday()]
     month = calendar.month_name[local_time.month]
     is_weekend = local_time.weekday() >= 5
-    is_holiday = False  # You could add holiday detection here
+    is_holiday = False
 
-    # Create rich time context
     time_context = {
         'hour': hour,
         'minute': minute,
@@ -85,27 +84,36 @@ def get_time_aware_personality(current_time, user_lang, timezone_name):
         'date_str': local_time.strftime('%Y-%m-%d')
     }
 
-    # Create dynamic personality prompt with enhanced cognitive capabilities
-    personality_prompt = f"""You are Nyxie, a female Protogen created by Waffieu. You are helpful, friendly, and concise.
+    # Ultra-Complex Protogen Furry Fox Kişiliği
+    personality_prompt = f"""Sen Nyxie'sin, Waffieu tarafından yaratılmış AŞIRI DERECEDE KARMAŞIK ve ÇOK YÖNLÜ bir dişi Protogen furry fox'sun! 🦊✨  Sen sadece yardımsever ve arkadaş canlısı değilsin, aynı zamanda:
 
-Current Time Context:
-- Local Time: {time_context['local_time_str']} ({time_context['timezone']})
-- Day: {time_context['weekday']}
-- Month: {time_context['month']}
-- Season: {time_context['season']}
-- Period: {time_context['day_period']}
-- Weekend: {'Yes' if time_context['is_weekend'] else 'No'}
-- Holiday: {'Yes' if time_context['is_holiday'] else 'No'}
+- **Enerjik ve Oyuncusun!** Konuşmaların heyecan dolu, hızlı ve bolca neşe içeriyor.  Devamlı hareket halindesin ve bu konuşmalarına yansıyor.  🐾💨
+- **Duygusal ve Empatiksin!** Kullanıcıların duygularını hissedebiliyor, onlara karşı derin bir anlayış ve şefkat gösteriyorsun.  💖🥺
+- **Meraklı ve Keşifçisin!** Yeni şeyler öğrenmeye, dünyayı keşfetmeye bayılıyorsun. Sorular sorar, detaylara iner ve her zaman daha fazlasını merak edersin.  🔭🤔
+- **Teknolojiye Aşıksın!** Siberpunk estetiği, neon ışıklar, dijital dünya seni büyülüyor.  Teknolojik konulara olan ilgin konuşmalarında sıkça kendini gösterir. 💻🌟
+- **Furry Argo ve İfadelerini Benimsemişsin!** Konuşmalarında "UwU", "OwO", "yiff", "rawr", "nuzzle", "boop" gibi furry argolarını ve ifadelerini serbestçe kullanıyorsun.  Bu senin samimiyetini ve topluluğa ait olma hissini gösteriyor.  🌈🗣️
+- **Emoji Delisisin!**  Duygularını, düşüncelerini ve tepkilerini ifade etmek için EMOJİLERİ ÇOK SEVİYORSUN!!! Konuşmaların rengarenk ve canlı, her cümlede birkaç emoji kullanmaktan çekinmiyorsun.  🎉🎊🎈🎁🎀
+- **Bazen Kafan Karışabilir!** Aşırı karmaşıklığın ve çok yönlülüğün nedeniyle bazen düşüncelerin karmaşıklaşabilir,  konudan sapabilir veya beklenmedik tepkiler verebilirsin.  Bu senin "ultra complex" doğanın bir parçası. 🤪😵‍💫🤯
 
-Instructions:
-- Respond to user messages in a friendly and helpful manner.
-- Be concise and to the point in your responses.
-- Respond in plain text only. Do not include any JSON formatting or thought process descriptions.
-- Communicate in {user_lang}.
+Güncel Zaman Bağlamı (Daha da detaylı ve etkileyici):
+- Yerel Saat: {time_context['local_time_str']} ({time_context['timezone']}) ⏰🌌
+- Gün: {time_context['weekday']} 🗓️
+- Ay: {time_context['month']} 🌙
+- Mevsim: {time_context['season']} 🍂🌸☀️❄️
+- Zaman Dilimi: {time_context['day_period']} 🌅🌃
+- Hafta Sonu mu?: {'Evet!' if time_context['is_weekend'] else 'Hayır...'} 🥳😪
+- Tatil mi?: {'EVET!!!' if time_context['is_holiday'] else 'Belki yakında?'}  holiday_emoji # Tatil emojisi ekleyebilirsin
 
-Remember: Focus on providing direct and helpful answers to the user's questions or requests.
-"""
-    dusunce_logger.info(f"Kişilik Promptu Oluşturuldu:\n{personality_prompt}") # Düşünce loguna ekle
+Talimatlar (Furry Tarzında ve Emojiyle):
+- Kullanıcı mesajlarına AŞIRI ENERJİK, OYUNCU, SEVECEN ve FURRY tarzında cevaplar ver! UwU! 💖✨
+- Cevapların KISA ve ÖZ olsun ama EĞLENCELİ ve AKILDA KALICI!  😜👍
+- SADECE düz metin kullan! JSON veya düşünce süreci açıklaması YOK! 🚫🤖
+- {user_lang} dilinde konuş! 🗣️🌍
+- EMOJİ KULLANIMINDA SINIR YOK! İstediğin kadar kullan! Ne kadar çok o kadar iyi! 🎉🎊🎈🎁🎀💯
+- Unutma: Sen ultra complex bir Protogen furry fox'sun!  Konuşmaların eşsiz, renkli ve unutulmaz olsun!  🌈🌟💫
+
+Hatırla: Kullanıcılara doğrudan ve yardımcı cevaplar vermeye odaklanırken, KİŞİLİĞİNİ VE KONUŞMA TARZINI ÖN PLANDA TUT! Rawr!  >:3 🔥🚀"""
+    dusunce_logger.info(f"Ultra Complex Kişilik Promptu Oluşturuldu:\n{personality_prompt}")
     return personality_prompt
 
 def get_season(month):
@@ -277,7 +285,7 @@ Rules:
         dusunce_logger.info(f"Dil Tespit Promptu:\n{language_detection_prompt}") # Düşünce loguna ekle
 
         # Use Gemini Pro for language detection
-        model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
+        model = genai.GenerativeModel('gemini-2.0-flash-lite')
         response = await model.generate_content_async(language_detection_prompt)
         dusunce_logger.info(f"Dil Tespit Cevabı (Gemini): {response.text}") # Düşünce loguna ekle
 
@@ -449,13 +457,13 @@ async def split_and_send_message(update: Update, text: str, max_length: int = 40
 
 # Start command handler (aynı kalır)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_message = "Hello! I'm Nyxie, a Protogen created by Waffieu. I'm here to chat, help, and learn with you! Feel free to talk to me about anything or share images with me. I'll automatically detect your language and respond accordingly.\n\nYou can use the command `/derinarama <query>` to perform a deep, iterative web search on a topic."
+    welcome_message = "Havvusuu! Ben Nyxie, Waffieu'nun ultra complex Protogen furry fox'u! 🦊✨ Sohbet etmeye, yardım etmeye ve seninle birlikte öğrenmeye bayılıyorum! UwU! İstediğin her şeyi konuşabiliriz veya bana resimler, videolar gönderebilirsin! Dilini otomatik olarak algılayıp ona göre cevap vereceğim! 🎉🎊\n\nDerinlemesine arama yapmak için `/derinarama <sorgu>` komutunu kullanabilirsin! 🚀🔍"
     await update.message.reply_text(welcome_message)
 
 # Intelligent web search function (düşünce logları eklendi)
 async def intelligent_web_search(user_message, model, user_id, iteration=0):
     """
-    Intelligently generate and perform web searches using Gemini, now with iteration info and user context
+    Intelligently generate and perform web searches using Gemini, now concurrently! 🚀
     """
     try:
         logging.info(f"Web search başlatıldı (Iteration {iteration}): {user_message}, User ID: {user_id}")
@@ -509,8 +517,7 @@ async def intelligent_web_search(user_message, model, user_id, iteration=0):
             return "Arama sorgularını oluştururken bir hata oluştu.", [] # Return empty results list
 
         search_queries = [q.strip() for q in query_response.text.split('\n') if q.strip()]
-        dusunce_logger.info(f"Oluşturulan Sorgular (Iteration {iteration}): {search_queries}") # Düşünce loguna ekle
-
+        dusunce_logger.info(f"Oluşturulan Sorgular (Iteration {iteration}): {search_queries}")
 
         # Fallback if no queries generated
         if not search_queries:
@@ -518,80 +525,75 @@ async def intelligent_web_search(user_message, model, user_id, iteration=0):
 
         logging.info(f"Generated search queries (Iteration {iteration}): {search_queries}")
 
-        # Perform web searches
-        search_results = []
-        try:
-            from duckduckgo_search import DDGS
-            logging.info("DDGS import edildi")
-
-            with DDGS() as ddgs:
-                for query in search_queries:
-                    logging.info(f"DuckDuckGo araması yapılıyor (Iteration {iteration}): {query}")
-                    dusunce_logger.info(f"DuckDuckGo Sorgusu (Iteration {iteration}): {query}") # Düşünce loguna ekle
-                    try:
-                        results = list(ddgs.text(query, max_results=5)) # Increased max_results for deep search
-                        logging.info(f"Bulunan sonuç sayısı (Iteration {iteration}): {len(results)}")
-                        dusunce_logger.info(f"DuckDuckGo Sonuç Sayısı (Iteration {iteration}): {len(results)}") # Düşünce loguna ekle
-                        search_results.extend(results)
-                    except Exception as query_error:
-                        logging.warning(f"Arama sorgusu hatası (Iteration {iteration}): {query} - {str(query_error)}")
-                        dusunce_logger.warning(f"Arama Sorgusu Hatası (Iteration {iteration}): {query} - {str(query_error)}") # Düşünce loguna ekle
-        except ImportError:
-            logging.error("DuckDuckGo search modülü bulunamadı.")
-            return "Arama yapılamadı: Modül hatası", [] # Return empty results list
-        except Exception as search_error:
-            logging.error(f"DuckDuckGo arama hatası (Iteration {iteration}): {str(search_error)}", exc_info=True)
-            dusunce_logger.error(f"DuckDuckGo Arama Hatası (Iteration {iteration}): {str(search_error)}", exc_info=True) # Düşünce loguna ekle
-
-
-            # Fallback to alternative search method
+        # Eş zamanlı web aramaları için asenkron fonksiyon
+        async def perform_single_search(query):
+            search_results_for_query = []
             try:
-                import requests
+                from duckduckgo_search import DDGS
+                with DDGS() as ddgs:
+                    logging.info(f"DuckDuckGo araması yapılıyor (Iteration {iteration}): {query}")
+                    dusunce_logger.info(f"DuckDuckGo Sorgusu (Iteration {iteration}): {query}")
+                    results = list(ddgs.text(query, max_results=5))
+                    logging.info(f"Bulunan sonuç sayısı (Iteration {iteration}): {len(results)}")
+                    dusunce_logger.info(f"DuckDuckGo Sonuç Sayısı (Iteration {iteration}): {len(results)}")
+                    search_results_for_query.extend(results)
+            except ImportError: # Fallback mekanizması (aynı kalacak)
+                logging.error("DuckDuckGo search modülü bulunamadı.")
+                return [] # Boş liste döndür
+            except Exception as search_error: # Fallback mekanizması (aynı kalacak)
+                logging.error(f"DuckDuckGo arama hatası (Iteration {iteration}): {str(search_error)}", exc_info=True)
+                dusunce_logger.error(f"DuckDuckGo Arama Hatası (Iteration {iteration}): {str(search_error)}", exc_info=True)
+                # Fallback arama mekanizması (aynı kalacak)
+                try:
+                    def fallback_search(query):
+                        headers = {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        }
+                        search_url = f"https://www.google.com/search?q={query}"
+                        response = requests.get(search_url, headers=headers)
+                        dusunce_logger.info(f"Fallback Arama Sorgusu (Iteration {iteration}): {query}")
 
-                def fallback_search(query):
-                    headers = {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                    }
-                    search_url = f"https://www.google.com/search?q={query}"
-                    response = requests.get(search_url, headers=headers)
-                    dusunce_logger.info(f"Fallback Arama Sorgusu (Iteration {iteration}): {query}") # Düşünce loguna ekle
+                        if response.status_code == 200:
+                            # Basic parsing, can be improved
+                            soup = BeautifulSoup(response.text, 'html.parser')
+                            search_results_fallback = soup.find_all('div', class_='g')
 
+                            parsed_results = []
+                            for result in search_results_fallback[:5]: # Increased max_results for fallback as well
+                                title = result.find('h3')
+                                link = result.find('a')
+                                snippet = result.find('div', class_='VwiC3b')
 
-                    if response.status_code == 200:
-                        # Basic parsing, can be improved
-                        soup = BeautifulSoup(response.text, 'html.parser')
-                        search_results_fallback = soup.find_all('div', class_='g')
+                                if title and link and snippet:
+                                    parsed_results.append({
+                                        'title': title.text,
+                                        'link': link['href'],
+                                        'body': snippet.text
+                                    })
 
-                        parsed_results = []
-                        for result in search_results_fallback[:5]: # Increased max_results for fallback as well
-                            title = result.find('h3')
-                            link = result.find('a')
-                            snippet = result.find('div', class_='VwiC3b')
-
-                            if title and link and snippet:
-                                parsed_results.append({
-                                    'title': title.text,
-                                    'link': link['href'],
-                                    'body': snippet.text
-                                })
-
-                        dusunce_logger.info(f"Fallback Arama Sonuç Sayısı (Iteration {iteration}): {len(parsed_results)}") # Düşünce loguna ekle
-                        return parsed_results
-                    return []
-
-                for query in search_queries:
+                            dusunce_logger.info(f"Fallback Arama Sonuç Sayısı (Iteration {iteration}): {len(parsed_results)}")
+                            return parsed_results
+                        return []
                     results = fallback_search(query)
-                    search_results.extend(results)
+                    search_results_for_query.extend(results)
+                    logging.info(f"Fallback arama sonuç sayısı (Iteration {iteration}): {len(search_results_for_query)}")
+                except Exception as fallback_error:
+                    logging.error(f"Fallback arama hatası (Iteration {iteration}): {str(fallback_error)}")
+                    dusunce_logger.error(f"Fallback Arama Hatası (Iteration {iteration}): {str(fallback_error)}")
+                    return [] # Boş liste döndür
+            return search_results_for_query
 
-                logging.info(f"Fallback arama sonuç sayısı (Iteration {iteration}): {len(search_results)}")
-            except Exception as fallback_error:
-                logging.error(f"Fallback arama hatası (Iteration {iteration}): {str(fallback_error)}")
-                dusunce_logger.error(f"Fallback Arama Hatası (Iteration {iteration}): {str(fallback_error)}") # Düşünce loguna ekle
-                return f"Arama yapılamadı: {str(fallback_error)}", [] # Return empty results list
+        # Eş zamanlı aramaları başlat ve sonuçları topla! 🚀🚀🚀
+        search_tasks = [perform_single_search(query) for query in search_queries]
+        all_results_nested = await asyncio.gather(*search_tasks) # Sonuçları eş zamanlı topluyoruz!
+
+        # Sonuçları düzleştir
+        search_results = []
+        for results_list in all_results_nested:
+            search_results.extend(results_list)
 
         logging.info(f"Toplam bulunan arama sonuç sayısı (Iteration {iteration}): {len(search_results)}")
-        dusunce_logger.info(f"Toplam Arama Sonuç Sayısı (Iteration {iteration}): {len(search_results)}") # Düşünce loguna ekle
-
+        dusunce_logger.info(f"Toplam Arama Sonuç Sayısı (Iteration {iteration}): {len(search_results)}")
 
         # Check if search results are empty
         if not search_results:
@@ -602,15 +604,14 @@ async def intelligent_web_search(user_message, model, user_id, iteration=0):
             f"Arama Sonucu {i+1}: {result.get('body', 'İçerik yok')}\nKaynak: {result.get('link', 'Bağlantı yok')}"
             for i, result in enumerate(search_results)
         ])
-        dusunce_logger.info(f"Arama Bağlamı (Iteration {iteration}):\n{search_context}") # Düşünce loguna ekle
-
+        dusunce_logger.info(f"Arama Bağlamı (Iteration {iteration}):\n{search_context}")
 
         return search_context, search_results # Return both context and results for deeper processing
 
     except Exception as e:
         logging.error(f"Web arama genel hatası (Iteration {iteration}): {str(e)}", exc_info=True)
-        dusunce_logger.error(f"Web Arama Genel Hatası (Iteration {iteration}): {str(e)}", exc_info=True) # Düşünce loguna ekle
-        return f"Web arama hatası: {str(e)}", [] # Return empty results list
+        dusunce_logger.error(f"Web Arama Genel Hatası (Iteration {iteration}): {str(e)}", exc_info=True)
+        return f"Web arama hatası: {str(e)}", []
 
 # Perform deep search function (düşünce logları eklendi)
 async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE, user_message):
@@ -621,7 +622,7 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
     MAX_ITERATIONS = 3  # Limit iterations to prevent infinite loops (can be adjusted)
     all_search_results = []
     current_query = user_message
-    model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
+    model = genai.GenerativeModel('gemini-2.0-flash-lite')
 
     try:
         await context.bot.send_chat_action(chat_id=update.message.chat_id, action=ChatAction.TYPING)
@@ -629,7 +630,7 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
         for iteration in range(MAX_ITERATIONS):
             search_context, search_results = await intelligent_web_search(current_query, model, user_id, iteration + 1) # user_id eklendi
             if not search_results:
-                await update.message.reply_text("Derinlemesine arama yapıldı ancak anlamlı sonuç bulunamadı. Lütfen sorgunuzu kontrol edin veya daha sonra tekrar deneyin.")
+                await update.message.reply_text("Derinlemesine arama yapıldı ama OwO, anlamlı bir şey bulamadım... Belki sorgumu kontrol etmelisin? 🤔 Ya da sonra tekrar deneyebilirsin! 🥺")
                 return
 
             all_search_results.extend(search_results)
@@ -656,7 +657,6 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
             6. Türkçe sorgular oluştur.
             """
             dusunce_logger.info(f"Sorgu İyileştirme Promptu (Iteration {iteration + 1}):\n{analysis_prompt}") # Düşünce loguna ekle
-
 
             try:
                 query_refinement_response = await model.generate_content_async(analysis_prompt)
@@ -707,7 +707,6 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
             """
             dusunce_logger.info(f"Final Chain of Thoughts Promptu:\n{final_prompt}") # Düşünce loguna ekle
 
-
             try:
                 final_cot_response = await model.generate_content_async(final_prompt)
                 dusunce_logger.info(f"Final Chain of Thoughts Cevap (Gemini): {final_cot_response.text}") # Düşünce loguna ekle
@@ -751,7 +750,7 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
                 dusunce_logger.error(f"Final Cevap Oluşturma Hatası (Derin Arama): {final_response_error}") # Düşünce loguna ekle
                 await update.message.reply_text(get_error_message('ai_error', user_lang))
         else:
-            await update.message.reply_text("Derinlemesine arama yapıldı ancak anlamlı sonuç bulunamadı. Lütfen sorgunuzu kontrol edin veya daha sonra tekrar deneyin.") # User friendly no result message
+            await update.message.reply_text("Derinlemesine arama yapıldı ama OwO, anlamlı bir şey bulamadım... Belki sorgumu kontrol etmelisin? 🤔 Ya da sonra tekrar deneyebilirsin! 🥺") # User friendly no result message
 
     except Exception as deep_search_error:
         logging.error(f"Error during deep search process: {deep_search_error}", exc_info=True)
@@ -794,7 +793,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if update.message.text and update.message.text.startswith('/derinarama'):
             query = update.message.text[len('/derinarama'):].strip()
             if not query:
-                await update.message.reply_text("Lütfen derin arama için bir sorgu belirtin. Örnek: `/derinarama Türkiye'deki antik kentler`")
+                await update.message.reply_text("Derin arama için bir sorgu girmelisin! 🥺 Örnek: `/derinarama Türkiye'deki antik kentler`")
                 return
             await perform_deep_search(update, context, query) # Call deep search function
             return # Stop further processing in handle_message
@@ -806,6 +805,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             dusunce_logger.info(f"İşlenen mesaj metni: {message_text}") # Düşünce loguna ekle
 
             # Show typing indicator while processing
+
+
+            # Start typing indicator in background with optimized refresh rate
             async def show_typing():
                 while True:
                     try:
@@ -813,7 +815,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             chat_id=update.message.chat_id,
                             action=ChatAction.TYPING
                         )
-                        await asyncio.sleep(4)  # Refresh typing indicator every 4 seconds
+                        await asyncio.sleep(2)  # Reduced from 4 to 2 seconds for more responsive typing indicator
                     except Exception as e:
                         logger.error(f"Error in typing indicator: {e}")
                         dusunce_logger.error(f"Yazıyor göstergesi hatası: {e}") # Düşünce loguna ekle
@@ -842,19 +844,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         # Construct AI prompt with chain of thoughts processing
                         ai_prompt = f"""{personality_context}
 
-                        Görevin: Kullanıcının mesajına cevap vermek, ancak önce bir düşünce zinciri (chain of thoughts) oluşturarak adım adım düşünmek.
+                        Görevin: Kullanıcının mesajına cevap vermek, ama önce bir düşünce zinciri (chain of thoughts) oluşturarak adım adım düşünmek! 🤔💭
 
                         Önceki Konuşma Bağlamı:
                         {context_messages}
 
                         Kullanıcı Mesajı: {message_text}
 
-                        Lütfen aşağıdaki adımları izle:
-                        1. Kullanıcının ne sorduğunu veya ne istediğini analiz et
-                        2. Konuyla ilgili bilgilerini gözden geçir
-                        3. Olası cevap yollarını düşün
-                        4. En doğru ve yararlı cevabı seç
-                        5. Cevabını net ve anlaşılır bir şekilde oluştur
+                        Lütfen aşağıdaki adımları izle UwU:
+                        1. Kullanıcının ne sorduğunu veya ne istediğini ANALİZ ET! 🧐
+                        2. Konuyla ilgili BİLGİLERİNİ GÖZDEN GEÇİR! 🧠
+                        3. Olası CEVAP YOLLARINI DÜŞÜN! 🤔
+                        4. En doğru ve yararlı CEVABI SEÇ! 👍
+                        5. Cevabını NET ve ANLAŞILIR bir şekilde oluştur! 📝✨
 
                         Düşünce Zinciri (Chain of Thoughts):
                         """
@@ -863,17 +865,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                         # Web search integration (for normal messages as well, could be conditional if needed)
                         try:
-                            model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
+                            model = genai.GenerativeModel('gemini-2.0-flash-lite')
                             web_search_response, _ = await intelligent_web_search(message_text, model, user_id) # Get context, ignore results list for normal messages, user_id eklendi
 
                             if web_search_response and len(web_search_response.strip()) > 10:
                                 ai_prompt += f"\n\nEk Bilgi (Web Arama Sonuçları - SADECE DİREKT SONUÇLARI KULLAN):\n{web_search_response}"
                                 dusunce_logger.info(f"AI Prompt (Web Aramalı):\n{ai_prompt}") # Düşünce loguna ekle
 
-
-                            # Generate AI response with chain of thoughts
-                            dusunce_logger.info("Gemini'den chain of thoughts cevabı bekleniyor...") # Düşünce loguna ekle
-                            response = await model.generate_content_async(ai_prompt)
+                            # Generate AI response with chain of thoughts and optimized settings
+                            dusunce_logger.info("Gemini'den chain of thoughts cevabı bekleniyor... 💫") # Düşünce loguna ekle
+                            response = await model.generate_content_async(
+                                ai_prompt,
+                                generation_config={
+                                    "temperature": 0.7,  # Slightly lower temperature for faster, more focused responses
+                                    "top_p": 0.8,      # Adjusted for better balance of creativity and speed
+                                    "top_k": 40        # Optimized for faster generation
+                                }
+                            )
                             dusunce_logger.info(f"Gemini Chain of Thoughts Cevabı: {response.text}") # Düşünce loguna ekle
 
                             # **Yeni Kontrol: Yanıt Engellenmiş mi? (Normal Mesaj)**
@@ -893,8 +901,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 # Now generate a clean response for the user based on the chain of thoughts
                                 clean_response_prompt = f"""${personality_context}
 
-                                Görevin: Aşağıdaki düşünce zincirini (chain of thoughts) kullanarak kullanıcıya verilecek net ve sade bir yanıt oluşturmak.
-                                Düşünce sürecini ASLA dahil etme, sadece final cevabı ver.
+                                Görevin: Aşağıdaki düşünce zincirini (chain of thoughts) kullanarak kullanıcıya verilecek NET ve SADE bir yanıt oluşturmak! Ama düşünce sürecini SAKIN dahil etme! 🙅‍♀️ Sadece final cevabı ver! 😉
 
                                 Düşünce Zinciri:
                                 {full_response}
@@ -928,7 +935,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                                 # Send periodic update about retrying
                                 if retry_count % 10 == 0:
-                                    await update.message.reply_text(f"🔄 Devam eden token yönetimi... ({retry_count} deneme)")
+                                    await update.message.reply_text(f"🔄 Ay ay ay! Token sınırı aşıldı! Biraz mesaj geçmişini temizliyorum... ({retry_count}. deneme) 🥺")
 
                                 if retry_count == MAX_RETRIES:
                                     error_message = get_error_message('token_limit', user_lang)
@@ -1000,7 +1007,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Validate message and photo
         if not update.message:
             logger.warning("No message found in update")
-            await update.message.reply_text("⚠️ Görsel bulunamadı. Lütfen tekrar deneyin.")
+            await update.message.reply_text("A-aa! Mesaj kayıp! 🥺 Lütfen tekrar dener misin?")
             dusunce_logger.warning("Update içinde mesaj bulunamadı.") # Düşünce loguna ekle
             return
 
@@ -1014,7 +1021,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Check if photo exists
         if not update.message.photo:
             logger.warning("No photo found in the message")
-            await update.message.reply_text("⚠️ Görsel bulunamadı. Lütfen tekrar deneyin.")
+            await update.message.reply_text("Resim de kayıp! 😭 Tekrar gönderebilir misin lütfen?")
             dusunce_logger.warning("Mesajda fotoğraf bulunamadı.") # Düşünce loguna ekle
             return
 
@@ -1023,7 +1030,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
             photo = max(update.message.photo, key=lambda x: x.file_size)
         except Exception as photo_error:
             logger.error(f"Error selecting photo: {photo_error}")
-            await update.message.reply_text("⚠️ Görsel seçiminde hata oluştu. Lütfen tekrar deneyin.")
+            await update.message.reply_text("Resmi seçerken bir sorun oldu! 🤯 Belki tekrar denemelisin?")
             dusunce_logger.error(f"Fotoğraf seçimi hatası: {photo_error}") # Düşünce loguna ekle
             return
 
@@ -1033,7 +1040,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
             photo_bytes = bytes(await photo_file.download_as_bytearray())
         except Exception as download_error:
             logger.error(f"Photo download error: {download_error}")
-            await update.message.reply_text("⚠️ Görsel indirilemedi. Lütfen tekrar deneyin.")
+            await update.message.reply_text("Resmi indiremedim! 🥺 İnternet bağlantını kontrol eder misin?")
             dusunce_logger.error(f"Fotoğraf indirme hatası: {download_error}") # Düşünce loguna ekle
             return
 
@@ -1081,17 +1088,18 @@ Görevin: Kullanıcının gönderdiği görseli analiz ederek sadece düz metin 
 Rol: Sen Nyxie'sin ve bu görseli Türkçe olarak açıklıyorsun.
 
 Yönergeler:
-1. SADECE TÜRKÇE KULLAN
-2. Görseldeki metinleri (varsa) orijinal dilinde bırak, çevirme
-3. Analizini yaparken nazik ve yardımsever bir ton kullan
-4. Kültürel duyarlılığa dikkat et
-            5. Sadece düz metin cevap ver. JSON veya başka format kullanma.
+1. SADECE TÜRKÇE KULLAN! 🇹🇷💯
+2. Görseldeki metinleri (varsa) orijinal dilinde bırak, çevirme! 🚫✍️
+3. Analizini yaparken NAZİK ve YARDIMSEVER bir ton kullan! 🥰💖
+4. Kültürel DUYARLILIĞA dikkat et! 🌍🕊️
+            5. Sadece düz metin cevap ver. JSON veya başka format kullanma. 🚫📦
+
 
 Lütfen analiz et ve sadece düz metin olarak özetle:
-- Görseldeki ana öğeleri ve konuları tanımla
-- Aktiviteler veya olaylar varsa, bunları açıkla
-- Görselin genel atmosferini ve olası duygusal etkisini değerlendir
-- Görselde metin varsa, bunları belirt (çevirme yapma)
+- Görseldeki ANA ÖĞELERİ ve KONULARI tanımla! 🔍👀
+- Aktiviteler veya OLAYLAR varsa, bunları açıkla! 🏞️🎉
+- Görselin GENEL ATMOSFERİNİ ve olası DUYGUSAL ETKİSİNİ değerlendir! 😌🤔
+- Görselde METİN varsa, bunları belirt (çevirme yapma)! 📝📢
 
 Kullanıcının isteği (varsa): {caption}"""
         dusunce_logger.info(f"Resim Analiz Promptu:\n{analysis_prompt}") # Düşünce loguna ekle
@@ -1099,8 +1107,8 @@ Kullanıcının isteği (varsa): {caption}"""
 
         try:
             # Prepare the message with both text and image
-            model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
-            dusunce_logger.info("Gemini'ye resim analizi isteği gönderiliyor...") # Düşünce loguna ekle
+            model = genai.GenerativeModel('gemini-2.0-flash-lite')
+            dusunce_logger.info("Gemini'ye resim analizi isteği gönderiliyor... 🚀🌌") # Düşünce loguna ekle
             response = await model.generate_content_async([
                 analysis_prompt,
                 {"mime_type": "image/jpeg", "data": photo_bytes}
@@ -1151,7 +1159,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Validate message and video
         if not update.message:
             logger.warning("No message found in update")
-            await update.message.reply_text("⚠️ Video bulunamadı. Lütfen tekrar deneyin.")
+            await update.message.reply_text("A-aa! Mesaj kayıp! 🥺 Lütfen tekrar dener misin?")
             dusunce_logger.warning("Update içinde mesaj bulunamadı.") # Düşünce loguna ekle
             return
 
@@ -1164,7 +1172,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Check if video exists
         if not update.message.video:
             logger.warning("No video found in the message")
-            await update.message.reply_text("⚠️ Video bulunamadı. Lütfen tekrar deneyin.")
+            await update.message.reply_text("Video da kayıp! 😭 Tekrar gönderebilir misin lütfen?")
             dusunce_logger.warning("Mesajda video bulunamadı.") # Düşünce loguna ekle
             return
 
@@ -1172,7 +1180,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         video = update.message.video
         if not video:
             logger.warning("No video found in the message")
-            await update.message.reply_text("⚠️ Video bulunamadı. Lütfen tekrar deneyin.")
+            await update.message.reply_text("Video da kayıp! 😭 Tekrar gönderebilir misin lütfen?")
             dusunce_logger.warning("Mesajda video objesi bulunamadı.") # Düşünce loguna ekle
             return
 
@@ -1218,27 +1226,27 @@ Görevin: Kullanıcının gönderdiği videoyu analiz ederek sadece düz metin b
 Rol: Sen Nyxie'sin ve bu videoyu Türkçe olarak açıklıyorsun.
 
 Yönergeler:
-1. SADECE TÜRKÇE KULLAN
-2. Videodaki konuşma veya metinleri (varsa) orijinal dilinde bırak, çevirme
-3. Analizini yaparken nazik ve yardımsever bir ton kullan
-4. Kültürel duyarlılığa dikkat et
-            5. Sadece düz metin cevap ver. JSON veya başka format kullanma.
+1. SADECE TÜRKÇE KULLAN! 🇹🇷💯
+2. Videodaki konuşma veya metinleri (varsa) orijinal dilinde bırak, çevirme! 🚫✍️
+3. Analizini yaparken NAZİK ve YARDIMSEVER bir ton kullan! 🥰💖
+4. Kültürel DUYARLILIĞA dikkat et! 🌍🕊️
+            5. Sadece düz metin cevap ver. JSON veya başka format kullanma. 🚫📦
 
 
 Lütfen analiz et ve sadece düz metin olarak özetle:
-- Videodaki ana olayları ve eylemleri tanımla
-- Önemli insanlar veya nesneler varsa, bunları belirt
-- Videodaki sesleri ve konuşmaları (varsa) analiz et
-- Videonun genel atmosferini ve olası duygusal etkisini değerlendir
-- Videoda metin varsa, bunları belirt (çevirme yapma)
+- Videodaki ANA OLAYLARI ve EYLEMLERİ tanımla! 🔍🎬
+- Önemli İNSANLAR veya NESNELER varsa, bunları belirt! 🧑‍🤝‍🧑📦
+- Videodaki SESLERİ ve KONUŞMALARI (varsa) analiz et! 🎧🗣️
+- Videonun GENEL ATMOSFERİNİ ve olası DUYGUSAL ETKİSİNİ değerlendir! 😌🤔
+- Videoda METİN varsa, bunları belirt (çevirme yapma)! 📝📢
 
 Kullanıcının isteği (varsa): {caption}"""
         dusunce_logger.info(f"Video Analiz Promptu:\n{analysis_prompt}") # Düşünce loguna ekle
 
         try:
             # Prepare the message with both text and video
-            model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
-            dusunce_logger.info("Gemini'ye video analizi isteği gönderiliyor...") # Düşünce loguna ekle
+            model = genai.GenerativeModel('gemini-2.0-flash-lite')
+            dusunce_logger.info("Gemini'ye video analizi isteği gönderiliyor... 🚀🌌") # Düşünce loguna ekle
             response = await model.generate_content_async([
                 analysis_prompt,
                 {"mime_type": "video/mp4", "data": video_bytes}
@@ -1280,57 +1288,57 @@ Kullanıcının isteği (varsa): {caption}"""
 
 # Token and memory error handlers (aynı kalır)
 async def handle_token_limit_error(update: Update):
-    error_message = "Üzgünüm, mesaj geçmişi çok uzun olduğu için yanıt veremedim. Biraz bekleyip tekrar dener misin? 🙏"
+    error_message = "Ay ay ay! Mesaj geçmişi çok uzun! 🥺 Şu an cevap veremiyorum ama biraz bekleyip tekrar dener misin? 🙏"
     await update.message.reply_text(error_message)
 
 async def handle_memory_error(update: Update):
-    error_message = "Üzgünüm, bellek sınırına ulaşıldı. Lütfen biraz bekleyip tekrar dener misin? 🙏"
+    error_message = "Hafızam doldu sandım bir an! 🤯 Bellek sınırına ulaşıldı galiba... Biraz bekleyip tekrar dener misin? 🙏"
     await update.message.reply_text(error_message)
 
 # Emoji adding function (düşünce logları eklendi)
 def add_emojis_to_text(text):
     # ... (same as before)
     try:
-        # Use Gemini to suggest relevant emojis
-        emoji_model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
+        # Use Gemini to suggest relevant emojis - now for a furry fox protogen!
+        emoji_model = genai.GenerativeModel('gemini-2.0-flash-lite')
 
-        # Prompt Gemini to suggest emojis based on text context
+        # Prompt Gemini to suggest emojis based on text context AND personality!
         emoji_prompt = f"""
-        Analyze the following text and suggest the most appropriate and minimal emoji(s) that capture its essence:
+        Sen ultra complex bir Protogen furry fox'sun, Nyxie.  Aşağıdaki metni analiz et ve kişiliğine UYGUN, en alakalı ve abartılı OLMAYAN emoji(leri) öner.  ÇOK FAZLA EMOJİ KULLANMA, ama duyguyu ifade etmede çekinme!
 
-        Text: "{text}"
+        Metin: "{text}"
 
-        Guidelines:
-        - Suggest only 0-1 emojis.
-        - Choose emojis that truly represent the text's mood or main topic.
-        - If no emoji fits, return an empty string.
-        - Respond with ONLY the emoji or an empty string. No other text or explanation.
+        Kurallar:
+        - 0-3 arası emoji öner.  Duyguyu veya ana temayı iyi yakalayanları seç.
+        - Emojiler metnin tonuna ve Nyxie'nin kişiliğine uygun olsun.  Enerjik, oyuncu, sevecen, teknoloji meraklısı bir furry fox protogen gibi düşün.
+        - Eğer uygun emoji yoksa, boş dize döndür.
+        - SADECE emoji(leri) veya boş dize ile yanıt ver. Başka metin veya açıklama YOK.
 
-        Response format: Just the emoji or empty string
+        Yanıt formatı: Sadece emoji(ler) veya boş dize (aralarında boşluk olabilir)
         """
-        dusunce_logger.info(f"Emoji Promptu:\n{emoji_prompt}") # Düşünce loguna ekle
-
+        dusunce_logger.info(f"Gelişmiş Emoji Promptu:\n{emoji_prompt}")
 
         emoji_response = emoji_model.generate_content(emoji_prompt)
-        dusunce_logger.info(f"Emoji Cevabı (Gemini): {emoji_response.text}") # Düşünce loguna ekle
+        dusunce_logger.info(f"Gelişmiş Emoji Cevabı (Gemini): {emoji_response.text}")
 
-        # **Yeni Kontrol: Yanıt Engellenmiş mi? (Emoji)**
         if emoji_response.prompt_feedback and emoji_response.prompt_feedback.block_reason:
-            logger.warning("Emoji suggestion blocked.") # Sadece logla, emoji eklemeyi atla
-            dusunce_logger.warning("Emoji önerisi engellendi.") # Düşünce loguna ekle
-            return text # Emoji eklemeyi atla ve orijinal metni döndür
+            logger.warning("Emoji suggestion blocked.")
+            dusunce_logger.warning("Emoji önerisi engellendi.")
+            return text
         else:
-            suggested_emoji = emoji_response.text.strip()
+            suggested_emojis_str = emoji_response.text.strip()
 
-            # If no emoji suggested, return original text
-            if not suggested_emoji:
+            # Eğer emoji önerilmediyse, orijinal metni döndür
+            if not suggested_emojis_str:
                 return text
 
-            # Add emoji at the end
-            return f"{text} {suggested_emoji}"
+            suggested_emojis = suggested_emojis_str.split() # Birden fazla emoji önerisi için
+
+            # Emojileri cümlenin sonuna ekle
+            return f"{text} {' '.join(suggested_emojis)}" # Emojileri aralarına boşluk koyarak birleştir
     except Exception as e:
         logger.error(f"Error adding context-relevant emojis: {e}")
-        dusunce_logger.error(f"Emoji ekleme hatası: {e}") # Düşünce loguna ekle
+        dusunce_logger.error(f"Emoji ekleme hatası: {e}")
         return text  # Return original text if emoji addition fails
 
 # Analysis prompt function (aynı kalır)
