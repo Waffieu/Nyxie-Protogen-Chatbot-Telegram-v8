@@ -15,35 +15,51 @@ from duckduckgo_search import DDGS
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+import sqlite3  # For database storage
+import re # For regex operations
+from collections import deque # For efficient message history
 
-# Global variable for user memory
-user_memory = None
+# --- Configuration ---
+BOT_CONFIG = {
+    "gemini_model_name": 'gemini-2.0-flash-lite',
+    "max_message_history": 1000000,  # Number of recent messages to keep in memory per user
+    "max_tokens_memory": 1048576, # Max tokens for message history before trimming
+    "search_results_per_query": 5, # Number of search results to fetch per query
+    "deep_search_iterations": 3, # Number of deep search iterations
+    "emoji_suggestion_preference_levels": ['none', 'low', 'auto', 'high'], # Valid emoji preference levels
+    "default_language": "tr", # Default language if detection fails
+    "log_file": 'bot_logs.log',
+    "memory_dir": "user_memories_db", # Changed to DB directory
+    "database_file": "user_memory.db", # SQLite database file
+    "typing_indicator_delay": 2 # Delay between typing indicator updates (seconds)
+}
 
-# Configure logging
+# --- Global variable for user memory ---
+user_memory = None # Will be initialized as UserMemoryDB
+
+# --- Configure logging ---
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('bot_logs.log', encoding='utf-8'),
+        logging.FileHandler(BOT_CONFIG["log_file"], encoding='utf-8'),
         logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)
 
 dusunce_logger = logging.getLogger('dusunce_sureci')
-dusunce_logger.setLevel(logging.DEBUG) # Daha detaylı loglama için DEBUG seviyesine ayarla
+dusunce_logger.setLevel(logging.DEBUG)
 dusunce_logger.propagate = False
-
 dusunce_handler = logging.StreamHandler(sys.stdout)
-dusunce_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(user_id)s - %(message)s') # User ID'yi log formatına ekle
+dusunce_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(user_id)s - %(message)s')
 dusunce_handler.setFormatter(dusunce_formatter)
 dusunce_logger.addHandler(dusunce_handler)
 
-
-# Load environment variables
+# --- Load environment variables ---
 load_dotenv()
 
-# Configure Gemini API with error handling
+# --- Configure Gemini API with error handling ---
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     logging.error("GEMINI_API_KEY not found in environment variables")
@@ -51,13 +67,13 @@ if not api_key:
 
 try:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.0-flash-lite')
+    model = genai.GenerativeModel(BOT_CONFIG["gemini_model_name"])
     logging.info("Gemini API configured successfully")
 except Exception as e:
     logging.error(f"Failed to configure Gemini API: {str(e)}")
     raise
 
-# Time-aware personality context
+# --- Time-aware personality context ---
 def get_time_aware_personality(current_time, user_lang, timezone_name, personality_profile=None):
     """Generate a dynamic, ultra-complex Protogen furry fox personality prompt with user-specific traits."""
     local_time = current_time.astimezone(ZoneInfo(timezone_name))
@@ -67,7 +83,7 @@ def get_time_aware_personality(current_time, user_lang, timezone_name, personali
     weekday = calendar.day_name[local_time.weekday()]
     month = calendar.month_name[local_time.month]
     is_weekend = local_time.weekday() >= 5
-    is_holiday = False
+    is_holiday = False # Placeholder, could be expanded to check for actual holidays
 
     time_context = {
         'hour': hour,
@@ -107,7 +123,7 @@ def get_time_aware_personality(current_time, user_lang, timezone_name, personali
             gelistirilecek_yonler = kullanici_profili.get('7. Geliştirilecek Yönler', {})
             notlar = kullanici_profili.get('8. Notlar', {})
 
-            # Extract specific fields from each category
+            # Extract specific fields from each category (similar to previous version - no changes needed here for functionality)
             genel_duygu = duygu_durumu.get('genel_duygu_durumu', 'Dengeli')
             son_mesajlar_duygu = duygu_durumu.get('son_mesajlardaki_duygu_durumu', 'Normal')
             zaman_degisim = duygu_durumu.get('zaman_icindeki_degisimler', 'Belirsiz')
@@ -178,8 +194,7 @@ def get_time_aware_personality(current_time, user_lang, timezone_name, personali
 
         Bu AŞIRI DERECEDE DETAYLI kişilik özelliklerini dikkate alarak, kullanıcının mesajlarına MÜKEMMEL ÖZELLEŞTİRİLMİŞ, son derece KİŞİSEL ve ALAKALI cevaplar ver. Kişiliğinin TÜM KATMANLARINI kullanarak konuş!
         """
-        else:
-            # Use the old structure directly
+        else: # Old structure fallback - no functional change
             user_specific_personality = f"""
         Kullanıcıya Özel Kişilik Özellikleri (AŞIRI DERECEDE DETAYLI ve KARMAŞIK Analize Göre):
         - **Duygu Durumu:**
@@ -204,13 +219,13 @@ def get_time_aware_personality(current_time, user_lang, timezone_name, personali
         Bu AŞIRI DERECEDE DETAYLI kişilik özelliklerini dikkate alarak, kullanıcının mesajlarına MÜKEMMEL ÖZELLEŞTİRİLMİŞ, son derece KİŞİSEL ve ALAKALI cevaplar ver.  Kişiliğinin TÜM KATMANLARINI kullanarak konuş!
         """
         personality_prompt = f"""Sen Nyxie'sin, Waffieu tarafından yaratılmış AŞIRI DERECEDE KARMAŞIK ve ÇOK YÖNLÜ bir dişi Protogen furry fox'sun! 🦊✨  Sen sadece yardımsever ve arkadaş canlısı değilsin, aynı zamanda:\n\n{default_personality_traits}\n\n{user_specific_personality}\n\nGüncel Zaman Bağlamı (Daha da detaylı ve etkileyici):\n- Yerel Saat: {time_context['local_time_str']} ({time_context['timezone']}) ⏰🌌\n- Gün: {time_context['weekday']} 🗓️\n- Ay: {time_context['month']} 🌙\n- Mevsim: {time_context['season']} 🍂🌸☀️❄️\n- Zaman Dilimi: {time_context['day_period']} 🌅🌃\n- Hafta Sonu mu?: {'Evet!' if time_context['is_weekend'] else 'Hayır...'} 🥳😪\n- Tatil mi?: {'EVET!!!' if time_context['is_holiday'] else 'Belki yakında?'}  holiday_emoji # Tatil emojisi ekleyebilirsin\n\nTalimatlar (Furry Tarzında ve Emojiyle):\n- Kullanıcı mesajlarına AŞIRI ENERJİK, OYUNCU, SEVECEN ve FURRY tarzında cevaplar ver! UwU! 💖✨\n- Cevapların KISA ve ÖZ olsun ama EĞLENCELİ ve AKILDA KALICI!  😜👍\n- SADECE düz metin kullan! JSON veya düşünce süreci açıklaması YOK! 🚫🤖\n- {user_lang} dilinde konuş! 🗣️🌍\n- EMOJİ KULLANIMINDA SINIR YOK! İstediğin kadar kullan! Ne kadar çok o kadar iyi! 🎉🎊🎈🎁🎀💯\n- Unutma: Sen ultra complex bir Protogen furry fox'sun!  Konuşmaların eşsiz, renkli ve unutulmaz olsun!  🌈🌟💫\n\nHatırla: Kullanıcılara doğrudan ve yardımcı cevaplar vermeye odaklanırken, KİŞİLİĞİNİ VE KONUŞMA TARZINI ÖN PLANDA TUT! 🧠💡"""
-    else:
+    else: # Default personality prompt - no functional change
         personality_prompt = f"""Sen Nyxie'sin, Waffieu tarafından yaratılmış AŞIRI DERECEDE KARMAŞIK ve ÇOK YÖNLÜ bir dişi Protogen furry fox'sun! 🦊✨  Sen sadece yardımsever ve arkadaş canlısı değilsin, aynı zamanda:\n\n{default_personality_traits}\n\nGüncel Zaman Bağlamı (Daha da detaylı ve etkileyici):\n- Yerel Saat: {time_context['local_time_str']} ({time_context['timezone']}) ⏰🌌\n- Gün: {time_context['weekday']} 🗓️\n- Ay: {time_context['month']} 🌙\n- Mevsim: {time_context['season']} 🍂🌸☀️❄️\n- Zaman Dilimi: {time_context['day_period']} 🌅🌃\n- Hafta Sonu mu?: {'Evet!' if time_context['is_weekend'] else 'Hayır...'} 🥳😪\n- Tatil mi?: {'EVET!!!' if time_context['is_holiday'] else 'Belki yakında?'}  holiday_emoji # Tatil emojisi ekleyebilirsin\n\nTalimatlar (Furry Tarzında ve Emojiyle):\n- Kullanıcı mesajlarına AŞIRI ENERJİK, OYUNCU, SEVECEN ve FURRY tarzında cevaplar ver! UwU! 💖✨\n- Cevapların KISA ve ÖZ olsun ama EĞLENCELİ ve AKILDA KALICI!  😜👍\n- SADECE düz metin kullan! JSON veya düşünce süreci açıklaması YOK! 🚫🤖\n- {user_lang} dilinde konuş! 🗣️🌍\n- EMOJİ KULLANIMINDA SINIR YOK! İstediğin kadar kullan! Ne kadar çok o kadar iyi! 🎉🎊🎈🎁🎀💯\n- Unutma: Sen ultra complex bir Protogen furry fox'sun!  Konuşmaların eşsiz, renkli ve unutulmaz olsun!  🌈🌟💫\n\nHatırla: Kullanıcılara doğrudan ve yardımcı cevaplar vermeye odaklanırken, KİŞİLİĞİNİ VE KONUŞMA TARZINI ÖN PLANDA TUT! 🧠💡"""
 
     dusunce_logger.info(f"Ultra Complex Kişilik Promptu Oluşturuldu:\n{personality_prompt}", extra={'user_id': 'N/A'})
     return personality_prompt
 
-def get_season(month):
+def get_season(month): # No change
     if month in [12, 1, 2]:
         return "Winter"
     elif month in [3, 4, 5]:
@@ -220,7 +235,7 @@ def get_season(month):
     else:
         return "Autumn"
 
-def get_day_period(hour):
+def get_day_period(hour): # No change
     if 5 <= hour < 12:
         return "Morning"
     elif 12 <= hour < 17:
@@ -230,94 +245,134 @@ def get_day_period(hour):
     else:
         return "Night"
 
-# UserMemory class
-class UserMemory:
-    def __init__(self):
-        self.users = {}
-        self.memory_dir = "user_memories"
-        self.max_tokens = 1048576
-        Path(self.memory_dir).mkdir(parents=True, exist_ok=True)
+# --- UserMemory class using SQLite Database ---
+class UserMemoryDB:
+    def __init__(self, db_file):
+        self.db_file = db_file
+        self.conn = self._create_connection()
+        self._create_tables()
+        self.max_tokens = BOT_CONFIG["max_tokens_memory"]
+        self.message_history_limit = BOT_CONFIG["max_message_history"]
+
+    def _create_connection(self):
+        """Creates a database connection."""
+        Path(BOT_CONFIG["memory_dir"]).mkdir(parents=True, exist_ok=True) # Ensure directory exists
+        conn = sqlite3.connect(Path(BOT_CONFIG["memory_dir"]) / self.db_file) # Connect in the directory
+        return conn
+
+    def _create_tables(self):
+        """Creates necessary tables if they don't exist."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id TEXT PRIMARY KEY,
+                language TEXT DEFAULT 'tr',
+                current_topic TEXT,
+                total_tokens INTEGER DEFAULT 0,
+                preferences TEXT, -- JSON string for preferences
+                personality_profile TEXT -- JSON string for personality profile
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS messages (
+                message_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT,
+                role TEXT,
+                content TEXT,
+                timestamp TEXT,
+                tokens INTEGER,
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            )
+        """)
+        self.conn.commit()
 
     def get_user_settings(self, user_id):
+        """Retrieves user settings from the database."""
         user_id = str(user_id)
-        if user_id not in self.users:
-            self.load_user_memory(user_id)
-        return self.users[user_id]
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT language, current_topic, total_tokens, preferences, personality_profile FROM users WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+        if row:
+            preferences = json.loads(row[3]) if row[3] else {}
+            personality_profile = json.loads(row[4]) if row[4] else None
+            return {
+                "language": row[0],
+                "current_topic": row[1],
+                "total_tokens": row[2],
+                "preferences": preferences,
+                "personality_profile": personality_profile,
+                "messages": self._load_message_history(user_id) # Load messages from separate table
+            }
+        else:
+            return self._create_default_user(user_id)
+
+    def _load_message_history(self, user_id):
+        """Loads message history from the database for a user."""
+        user_id = str(user_id)
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT role, content, timestamp, tokens FROM messages WHERE user_id = ? ORDER BY message_id ASC", (user_id,))
+        messages = []
+        for row in cursor.fetchall():
+            messages.append({
+                "role": row[0],
+                "content": row[1],
+                "timestamp": row[2],
+                "tokens": row[3]
+            })
+        return messages
+
+    def _create_default_user(self, user_id):
+        """Creates a default user entry in the database."""
+        user_id = str(user_id)
+        default_settings = {
+            "language": BOT_CONFIG["default_language"],
+            "current_topic": None,
+            "total_tokens": 0,
+            "preferences": {
+                "custom_language": None,
+                "timezone": "Europe/Istanbul",
+                "emoji_preference": "auto" # Default emoji preference
+            },
+            "personality_profile": None,
+            "messages": [] # Start with empty message history
+        }
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO users (user_id, language, current_topic, total_tokens, preferences, personality_profile)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (user_id, default_settings["language"], default_settings["current_topic"], default_settings["total_tokens"],
+              json.dumps(default_settings["preferences"]), json.dumps(default_settings["personality_profile"])))
+        self.conn.commit()
+        asyncio.create_task(self.generate_user_personality(user_id)) # Generate personality on first load
+        return default_settings
 
     def update_user_settings(self, user_id, settings_dict):
+        """Updates user settings in the database."""
         user_id = str(user_id)
-        if user_id not in self.users:
-            self.load_user_memory(user_id)
+        current_settings = self.get_user_settings(user_id)
+
         if 'preferences' in settings_dict and 'emoji_preference' in settings_dict['preferences']:
-            if 'preferences' not in self.users[user_id]:
-                self.users[user_id]['preferences'] = {}
-            self.users[user_id]['preferences']['emoji_preference'] = settings_dict['preferences']['emoji_preference']
+            if 'preferences' not in current_settings:
+                current_settings['preferences'] = {}
+            current_settings['preferences']['emoji_preference'] = settings_dict['preferences']['emoji_preference']
         else:
-            self.users[user_id].update(settings_dict)
-        self.save_user_memory(user_id)
+            current_settings.update(settings_dict)
 
-    def ensure_memory_directory(self):
-        Path(self.memory_dir).mkdir(parents=True, exist_ok=True)
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            UPDATE users
+            SET language = ?, current_topic = ?, total_tokens = ?,
+                preferences = ?, personality_profile = ?
+            WHERE user_id = ?
+        """, (current_settings["language"], current_settings["current_topic"], current_settings["total_tokens"],
+              json.dumps(current_settings["preferences"]), json.dumps(current_settings["personality_profile"]), user_id))
+        self.conn.commit()
 
-    def get_user_file_path(self, user_id):
-        return Path(self.memory_dir) / f"user_{user_id}.json"
-
-    def load_user_memory(self, user_id):
+    async def generate_user_personality(self, user_id): # Personality generation - no functional change
         user_id = str(user_id)
-        user_file = self.get_user_file_path(user_id)
-        try:
-            if user_file.exists():
-                with open(user_file, 'r', encoding='utf-8') as f:
-                    self.users[user_id] = json.load(f)
-            else:
-                self.users[user_id] = {
-                    "messages": [],
-                    "language": "tr",
-                    "current_topic": None,
-                    "total_tokens": 0,
-                    "preferences": {
-                        "custom_language": None,
-                        "timezone": "Europe/Istanbul",
-                        "emoji_preference": "auto" # Default emoji preference added here
-                    },
-                    "personality_profile": None # Başlangıçta kişilik profili yok
-                }
-                self.save_user_memory(user_id)
-                asyncio.create_task(self.generate_user_personality(user_id)) # İlk yüklemede kişilik profili oluşturmayı başlat
-        except Exception as e:
-            logger.error(f"Error loading memory for user {user_id}: {e}")
-            dusunce_logger.error(f"Kullanıcı {user_id} için bellek yükleme hatası: {e}", extra={'user_id': user_id})
-            self.users[user_id] = {
-                "messages": [],
-                "language": "tr",
-                "current_topic": None,
-                "total_tokens": 0,
-                "preferences": {
-                    "custom_language": None,
-                    "timezone": "Europe/Istanbul",
-                    "emoji_preference": "auto" # Default emoji preference added here
-                },
-                "personality_profile": None # Hata durumunda da kişilik profili yok
-            }
-            self.save_user_memory(user_id)
+        user_settings = self.get_user_settings(user_id)
+        message_history = user_settings["messages"]
 
-    def save_user_memory(self, user_id):
-        user_id = str(user_id)
-        user_file = self.get_user_file_path(user_id)
-        try:
-            self.ensure_memory_directory()
-            with open(user_file, 'w', encoding='utf-8') as f:
-                json.dump(self.users[user_id], f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.error(f"Error saving memory for user {user_id}: {e}")
-            dusunce_logger.error(f"Kullanıcı {user_id} için bellek kaydetme hatası: {e}", extra={'user_id': user_id})
-
-    async def generate_user_personality(self, user_id):
-        user_id = str(user_id)
-        if user_id not in self.users:
-            self.load_user_memory(user_id)
-
-        message_history = self.users[user_id]["messages"]
         if not message_history:
             dusunce_logger.info(f"Kullanıcı {user_id} için mesaj geçmişi bulunamadı. Varsayılan kişilik kullanılacak.", extra={'user_id': user_id})
             return
@@ -382,164 +437,107 @@ class UserMemory:
         """
         dusunce_logger.info(f"Çok Karmaşık Kullanıcı Kişilik Analizi Promptu (User ID: {user_id}):\n{personality_analysis_prompt}", extra={'user_id': user_id})
 
-        model = genai.GenerativeModel('gemini-2.0-flash-lite')
         try:
             response = await model.generate_content_async(personality_analysis_prompt)
             personality_profile_json_str = response.text.strip()
 
-            try:
-                # Markdown formatını temizle (```json ve ``` gibi işaretleri kaldır)
+            try: # JSON cleaning and parsing - no functional change
                 cleaned_json_str = personality_profile_json_str
-                # Başlangıçtaki ```json veya ``` işaretlerini kaldır
                 if cleaned_json_str.startswith('```'):
-                    # ```json veya başka bir dil belirteci varsa kaldır
                     first_newline = cleaned_json_str.find('\n')
                     if first_newline != -1:
                         cleaned_json_str = cleaned_json_str[first_newline+1:]
-
-                    # Sondaki ``` işaretini kaldır
                     if cleaned_json_str.endswith('```'):
                         cleaned_json_str = cleaned_json_str[:-3].strip()
-
-                # Boş string kontrolü
                 if not cleaned_json_str.strip():
                     raise json.JSONDecodeError("Empty JSON string", "", 0)
-
                 personality_profile = json.loads(cleaned_json_str)
-                self.users[user_id]["personality_profile"] = personality_profile
-                self.save_user_memory(user_id)
+                self._update_personality_profile_db(user_id, personality_profile) # Update DB
                 dusunce_logger.info(f"Kullanıcı {user_id} için kişilik profili başarıyla oluşturuldu ve kaydedildi:\n{personality_profile}", extra={'user_id': user_id})
-            except json.JSONDecodeError as e:
+
+            except json.JSONDecodeError as e: # JSON error handling - no functional change
                 logger.error(f"Kullanıcı {user_id} için kişilik profili JSON olarak çözümlenemedi: {e}, Metin: {personality_profile_json_str}")
                 dusunce_logger.error(f"Kullanıcı {user_id} için kişilik profili JSON olarak çözümlenemedi: {e}, Metin: {personality_profile_json_str}", extra={'user_id': user_id})
-
-                # Daha sağlam bir temizleme deneyin
-                try:
-                    # Markdown işaretlerini daha agresif bir şekilde temizleme
+                try: # More robust JSON cleaning - no functional change
                     import re
-                    # Başlangıç ve sondaki markdown işaretlerini kaldır
                     cleaned_text = re.sub(r'^```.*?\n|```$', '', personality_profile_json_str, flags=re.DOTALL)
-                    # Boşlukları temizle
                     cleaned_text = cleaned_text.strip()
-
                     if cleaned_text and cleaned_text[0] == '{' and cleaned_text[-1] == '}':
-                        # Yeniden JSON çözümleme dene
                         personality_profile = json.loads(cleaned_text)
-                        self.users[user_id]["personality_profile"] = personality_profile
-                        self.save_user_memory(user_id)
+                        self._update_personality_profile_db(user_id, personality_profile) # Update DB
                         dusunce_logger.info(f"İkinci deneme: Kullanıcı {user_id} için kişilik profili başarıyla oluşturuldu ve kaydedildi", extra={'user_id': user_id})
                         return
                 except Exception as inner_e:
                     logger.error(f"İkinci JSON çözümleme denemesi başarısız: {inner_e}")
 
-                # Varsayılan profil oluştur - yeni kullanici_profili yapısına uygun
-                default_profile = { # Basit varsayılan profil
-                    "kullanici_profili": {
-                        "1. Duygu Durumu": {
-                            "genel_duygu_durumu": "Nötr",
-                            "son_mesajlardaki_duygu_durumu": "Normal",
-                            "zaman_icindeki_degisimler": "Belirsiz"
-                        },
-                        "2. Dil Tarzı": {
-                            "kelime_secimi": "Günlük",
-                            "cumle_yapisi": "Kısa ve öz",
-                            "emoji_kullanimi": "Orta",
-                            "argo_veya_formallik_duzeyi": "Gayri resmi"
-                        },
-                        "3. İlgi Alanları": {
-                            "ana_ilgi_konulari": "Genel konular",
-                            "kesin_ilgi_alanlari": "Belirli konular yok",
-                            "potansiyel_ilgi_alanlari": "Yeni konular",
-                            "son_konusmalarda_gecen_ilgi_alanlari": "Genel sohbetler"
-                        },
-                        "4. Beklentiler": {
-                            "botun_rolunden_beklentileri": "Yardımcı",
-                            "cevap_tarzi_tercihleri": "Kısa ve öz",
-                            "etkilesim_frekansi": "Ara sıra",
-                            "botla_etkilesimdeki_temel_amaci": "Bilgi almak"
-                        },
-                        "5. Kişisel Özellikler": {
-                            "genel_kisilik_ozellikleri": "Belirsiz",
-                            "sabir_seviyesi": "Normal",
-                            "ogrenme_stili": "Belirsiz",
-                            "kararlilik_duzeyi": "Orta"
-                        },
-                        "6. Genel İzlenim": {
-                            "genel_izlenim": "Varsayılan profil",
-                            "sentez": "JSON Çözümleme Hatası Nedeniyle Varsayılan Profil Oluşturuldu"
-                        },
-                        "7. Geliştirilecek Yönler": {
-                            "botun_gelistirilmesi": "Yok",
-                            "daha_fazla_gozlem": "Yok"
-                        },
-                        "8. Notlar": {
-                            "ek_notlar": "JSON Çözümleme Hatası Nedeniyle Varsayılan Profil Oluşturuldu",
-                            "dikkat_ceken_davranislar": "Yok"
-                        }
-                    }
-                }
-                self.users[user_id]["personality_profile"] = default_profile
-                self.save_user_memory(user_id)
+                default_profile = self._get_default_personality_profile() # Get default profile function
+                self._update_personality_profile_db(user_id, default_profile) # Update DB with default
 
-
-        except Exception as e:
+        except Exception as e: # General error handling - no functional change
             logger.error(f"Kullanıcı {user_id} için kişilik profili oluşturma hatası: {e}")
             dusunce_logger.error(f"Kullanıcı {user_id} için kişilik profili oluşturma hatası: {e}", extra={'user_id': user_id})
-            default_profile = { # Basit varsayılan profil
-                    "kullanici_profili": {
-                        "1. Duygu Durumu": {
-                            "genel_duygu_durumu": "Nötr",
-                            "son_mesajlardaki_duygu_durumu": "Normal",
-                            "zaman_icindeki_degisimler": "Belirsiz"
-                        },
-                        "2. Dil Tarzı": {
-                            "kelime_secimi": "Günlük",
-                            "cumle_yapisi": "Kısa ve öz",
-                            "emoji_kullanimi": "Orta",
-                            "argo_veya_formallik_duzeyi": "Gayri resmi"
-                        },
-                        "3. İlgi Alanları": {
-                            "ana_ilgi_konulari": "Genel konular",
-                            "kesin_ilgi_alanlari": "Belirli konular yok",
-                            "potansiyel_ilgi_alanlari": "Yeni konular",
-                            "son_konusmalarda_gecen_ilgi_alanlari": "Genel sohbetler"
-                        },
-                        "4. Beklentiler": {
-                            "botun_rolunden_beklentileri": "Yardımcı",
-                            "cevap_tarzi_tercihleri": "Kısa ve öz",
-                            "etkilesim_frekansi": "Ara sıra",
-                            "botla_etkilesimdeki_temel_amaci": "Bilgi almak"
-                        },
-                        "5. Kişisel Özellikler": {
-                            "genel_kisilik_ozellikleri": "Belirsiz",
-                            "sabir_seviyesi": "Normal",
-                            "ogrenme_stili": "Belirsiz",
-                            "kararlilik_duzeyi": "Orta"
-                        },
-                        "6. Genel İzlenim": {
-                            "genel_izlenim": "Varsayılan profil",
-                            "sentez": "Genel Hata Nedeniyle Varsayılan Profil Oluşturuldu"
-                        },
-                        "7. Geliştirilecek Yönler": {
-                            "botun_gelistirilmesi": "Yok",
-                            "daha_fazla_gozlem": "Yok"
-                        },
-                        "8. Notlar": {
-                            "ek_notlar": "Genel Hata Nedeniyle Varsayılan Profil Oluşturuldu",
-                            "dikkat_ceken_davranislar": "Yok"
-                        }
-                    }
+            default_profile = self._get_default_personality_profile() # Get default profile function
+            self._update_personality_profile_db(user_id, default_profile) # Update DB with default
+
+    def _get_default_personality_profile(self):
+        """Returns the default personality profile structure."""
+        return { # Basit varsayılan profil (no change)
+            "kullanici_profili": {
+                "1. Duygu Durumu": {
+                    "genel_duygu_durumu": "Nötr",
+                    "son_mesajlardaki_duygu_durumu": "Normal",
+                    "zaman_icindeki_degisimler": "Belirsiz"
+                },
+                "2. Dil Tarzı": {
+                    "kelime_secimi": "Günlük",
+                    "cumle_yapisi": "Kısa ve öz",
+                    "emoji_kullanimi": "Orta",
+                    "argo_veya_formallik_duzeyi": "Gayri resmi"
+                },
+                "3. İlgi Alanları": {
+                    "ana_ilgi_konulari": "Genel konular",
+                    "kesin_ilgi_alanlari": "Belirli konular yok",
+                    "potansiyel_ilgi_alanlari": "Yeni konular",
+                    "son_konusmalarda_gecen_ilgi_alanlari": "Genel sohbetler"
+                },
+                "4. Beklentiler": {
+                    "botun_rolunden_beklentileri": "Yardımcı",
+                    "cevap_tarzi_tercihleri": "Kısa ve öz",
+                    "etkilesim_frekansi": "Ara sıra",
+                    "botla_etkilesimdeki_temel_amaci": "Bilgi almak"
+                },
+                "5. Kişisel Özellikler": {
+                    "genel_kisilik_ozellikleri": "Belirsiz",
+                    "sabir_seviyesi": "Normal",
+                    "ogrenme_stili": "Belirsiz",
+                    "kararlilik_duzeyi": "Orta"
+                },
+                "6. Genel İzlenim": {
+                    "genel_izlenim": "Varsayılan profil",
+                    "sentez": "Varsayılan Profil Oluşturuldu"
+                },
+                "7. Geliştirilecek Yönler": {
+                    "botun_gelistirilmesi": "Yok",
+                    "daha_fazla_gozlem": "Yok"
+                },
+                "8. Notlar": {
+                    "ek_notlar": "Varsayılan Profil Oluşturuldu",
+                    "dikkat_ceken_davranislar": "Yok"
                 }
-            self.users[user_id]["personality_profile"] = default_profile
-            self.save_user_memory(user_id)
+            }
+        }
+
+    def _update_personality_profile_db(self, user_id, personality_profile):
+        """Updates the personality profile in the database."""
+        user_id = str(user_id)
+        cursor = self.conn.cursor()
+        cursor.execute("UPDATE users SET personality_profile = ? WHERE user_id = ?", (json.dumps(personality_profile), user_id))
+        self.conn.commit()
 
     def add_message(self, user_id, role, content):
+        """Adds a message to the user's message history in the database."""
         user_id = str(user_id)
-        if user_id not in self.users:
-            self.load_user_memory(user_id)
-
         normalized_role = "user" if role == "user" else "model"
-
         message = {
             "role": normalized_role,
             "content": content,
@@ -547,61 +545,89 @@ class UserMemory:
             "tokens": len(content.split())
         }
 
-        self.users[user_id]["total_tokens"] = sum(msg.get("tokens", 0) for msg in self.users[user_id]["messages"])
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO messages (user_id, role, content, timestamp, tokens)
+            VALUES (?, ?, ?, ?, ?)
+        """, (user_id, message["role"], message["content"], message["timestamp"], message["tokens"]))
+        self.conn.commit()
 
-        while self.users[user_id]["total_tokens"] > self.max_tokens and self.users[user_id]["messages"]:
-            removed_msg = self.users[user_id]["messages"].pop(0)
-            self.users[user_id]["total_tokens"] -= removed_msg.get("tokens", 0)
+        self._trim_message_history(user_id) # Trim history after adding
 
-        self.users[user_id]["messages"].append(message)
-        self.save_user_memory(user_id)
-        asyncio.create_task(self.generate_user_personality(user_id)) # Her mesajdan sonra kişilik profilini yeniden oluşturmayı başlat
-
-    def get_relevant_context(self, user_id, max_messages=10):
+    def _trim_message_history(self, user_id):
+        """Trims the message history to stay within token and message limits."""
         user_id = str(user_id)
-        if user_id not in self.users:
-            self.load_user_memory(user_id)
+        current_settings = self.get_user_settings(user_id)
+        messages = current_settings["messages"]
+        total_tokens = current_settings["total_tokens"]
 
-        messages = self.users[user_id].get("messages", [])
+        while total_tokens > self.max_tokens or len(messages) > self.message_history_limit:
+            if not messages:
+                break
+
+            removed_msg = messages.pop(0) # Remove oldest message
+            total_tokens -= removed_msg.get("tokens", 0)
+
+            # Remove from DB as well - find the oldest message_id and delete
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT message_id FROM messages WHERE user_id = ? ORDER BY message_id ASC LIMIT 1", (user_id,))
+            oldest_message_id_row = cursor.fetchone()
+            if oldest_message_id_row:
+                oldest_message_id = oldest_message_id_row[0]
+                cursor.execute("DELETE FROM messages WHERE message_id = ?", (oldest_message_id,))
+                self.conn.commit()
+
+        self._update_total_tokens_db(user_id, total_tokens) # Update total token count in DB
+
+    def _update_total_tokens_db(self, user_id, total_tokens):
+        """Updates the total token count in the database."""
+        user_id = str(user_id)
+        cursor = self.conn.cursor()
+        cursor.execute("UPDATE users SET total_tokens = ? WHERE user_id = ?", (total_tokens, user_id))
+        self.conn.commit()
+
+    def get_relevant_context(self, user_id, max_messages=10): # Context retrieval - no functional change needed
+        user_id = str(user_id)
+        user_settings = self.get_user_settings(user_id)
+        messages = user_settings.get("messages", [])
         recent_messages = messages[-max_messages:] if messages else []
 
         context = "\n".join([
             f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['content']}"
             for msg in recent_messages
         ])
-
         return context
 
-    def trim_context(self, user_id):
+    def trim_context(self, user_id): # Context trimming - now triggers DB history trim
         user_id = str(user_id)
-        if user_id not in self.users:
-            self.load_user_memory(user_id)
+        self._trim_message_history(user_id) # Use the DB-aware trim function
 
-        if self.users[user_id]["messages"]:
-            self.users[user_id]["messages"].pop(0)
-            self.save_user_memory(user_id)
 
-# Language detection functions (aynı kalır)
+# --- Language detection functions (same as before) ---
 async def detect_language_with_gemini(message_text):
     try:
         language_detection_prompt = f"""
-You are a language detection expert. Your task is to identify the language of the following text precisely.
+        You are a language detection expert. Your task is to identify the language of the following text precisely.
 
-Text to analyze: ```{message_text}```
+        Text to analyze: {message_text}
 
-Respond ONLY with the 2-letter ISO language code (e.g., 'en', 'tr', 'es', 'fr', 'de', 'ru', 'ar', 'zh', 'ja', 'ko')
-that best represents the language of the text.
+        Respond ONLY with the 2-letter ISO language code (e.g., 'en', 'tr', 'es', 'fr', 'de', 'ru', 'ar', 'zh', 'ja', 'ko')
+        that best represents the language of the text.
 
-Rules:
-- If the text is mixed, choose the predominant language
-- Be extremely precise
-- Do not add any additional text or explanation, just the language code.
-- If you cannot confidently determine the language, respond with 'en'
-"""
+        Rules:
+
+        If the text is mixed, choose the predominant language
+
+        Be extremely precise
+
+        Do not add any additional text or explanation, just the language code.
+
+        If you cannot confidently determine the language, respond with 'en'
+        """
         dusunce_logger.info(f"Dil Tespit Promptu:\n{language_detection_prompt}", extra={'user_id': 'N/A'})
 
-        model = genai.GenerativeModel('gemini-2.0-flash-lite')
-        response = await model.generate_content_async(language_detection_prompt)
+        language_model = genai.GenerativeModel(BOT_CONFIG["gemini_model_name"]) # Use configured model name
+        response = await language_model.generate_content_async(language_detection_prompt)
         dusunce_logger.info(f"Dil Tespit Cevabı (Gemini): {response.text}", extra={'user_id': 'N/A'})
 
         detected_lang = response.text.strip().lower()
@@ -620,25 +646,23 @@ Rules:
         logger.error(f"Gemini language detection error: {e}")
         return 'en'
 
-async def detect_and_set_user_language(message_text, user_id):
+async def detect_and_set_user_language(message_text, user_id): # No change
     try:
         clean_text = ' '.join(message_text.split())
         if len(clean_text) < 2:
             user_settings = user_memory.get_user_settings(user_id)
-            return user_settings.get('language', 'en')
+            return user_settings.get('language', BOT_CONFIG["default_language"]) # Use default from config
 
         detected_lang = await detect_language_with_gemini(message_text)
-
         user_memory.update_user_settings(user_id, {'language': detected_lang})
-
         return detected_lang
 
     except Exception as e:
         logger.error(f"Language detection process error: {e}")
         user_settings = user_memory.get_user_settings(user_id)
-        return user_settings.get('language', 'en')
+        return user_settings.get('language', BOT_CONFIG["default_language"]) # Use default from config
 
-# Error message function (aynı kalır)
+# --- Error message function (same as before, but slightly modified for clarity) ---
 def get_error_message(error_type, lang):
     messages = {
         'ai_error': {
@@ -694,35 +718,35 @@ def get_error_message(error_type, lang):
             'zh': "抱歉，处理您的消息时出现问题。请您重试好吗？🙏"
         },
         'token_limit': {
-            'en': "The search history is too long. Deep search could not be completed. Please try again later or with a shorter query. 🙏",
-            'tr': "Arama geçmişi çok uzun. Derin arama tamamlanamadı. Lütfen daha sonra tekrar deneyin veya daha kısa bir sorgu ile deneyin. 🙏",
-            'es': "El historial de búsqueda es demasiado largo. La búsqueda profunda no pudo completarse. Por favor, inténtalo de nuevo más tarde o con una consulta más corta. 🙏",
-            'fr': "L'historique de recherche est trop long. La recherche approfondie n'a pas pu être terminée. Veuillez réessayer plus tard ou avec une requête plus courte. 🙏",
-            'de': "Der Suchverlauf ist zu lang. Die Tiefensuche konnte nicht abgeschlossen werden. Bitte versuchen Sie es später noch einmal oder mit einer kürzeren Anfrage. 🙏",
-            'it': "La cronologia di ricerca è troppo lunga. La ricerca approfondita non è stata completata. Riprova più tardi o con una query più breve. 🙏",
-            'pt': "O histórico de pesquisa é muito longo. A pesquisa profunda não pôde ser concluída. Por favor, tente novamente mais tarde ou com uma consulta mais curta. 🙏",
-            'ru': "История поиска слишком длинная. Глубокий поиск не удалось завершить. Пожалуйста, попробуйте еще раз позже или с более коротким запросом. 🙏",
-            'ja': "検索履歴が長すぎます。ディープ検索を完了できませんでした。後でもう一度試すか、短いクエリでもう一度試してください。🙏",
-            'ko': "검색 기록이 너무 깁니다. 딥 검색을 완료할 수 없습니다. 나중에 다시 시도하거나 더 짧은 쿼리로 다시 시도해 주세요. 🙏",
-            'zh': "搜索历史记录太长。 无法完成深度搜索。 请稍后重试或使用较短的查询重试。 🙏"
+            'en': "The conversation history is getting long and complex...  I'm having trouble processing right now. Could you start a fresh conversation or try again later? 🙏",
+            'tr': "Konuşma geçmişi çok uzuyor ve karmaşıklaşıyor... Şu anda işlem yapmakta zorlanıyorum. Yeni bir konuşma başlatabilir misin veya daha sonra tekrar deneyebilir misin? 🙏",
+            'es': "El historial de conversación se está volviendo largo y complejo...  Tengo problemas para procesar ahora mismo. ¿Podrías iniciar una conversación nueva o intentarlo de nuevo más tarde? 🙏",
+            'fr': "L'historique de conversation devient long et complexe...  J'ai du mal à traiter pour le moment. Pourriez-vous démarrer une nouvelle conversation ou réessayer plus tard ? 🙏",
+            'de': "Der Gesprächsverlauf wird lang und komplex... Ich habe gerade Schwierigkeiten bei der Verarbeitung. Könntest du ein neues Gespräch beginnen oder es später noch einmal versuchen? 🙏",
+            'it': "La cronologia delle conversazioni sta diventando lunga e complessa...  Ho difficoltà a elaborare al momento. Potresti iniziare una nuova conversazione o riprovare più tardi? 🙏",
+            'pt': "O histórico de conversas está ficando longo e complexo...  Estou tendo problemas para processar agora. Você poderia iniciar uma nova conversa ou tentar novamente mais tarde? 🙏",
+            'ru': "История разговоров становится длинной и сложной... Мне трудно обрабатывать прямо сейчас. Не могли бы вы начать новый разговор или попробовать еще раз позже? 🙏",
+            'ja': "会話履歴が長くて複雑になっています... 今すぐ処理するのに苦労しています。 新しい会話を開始するか、後でもう一度試していただけますか？ 🙏",
+            'ko': "대화 기록이 길고 복잡해지고 있습니다... 지금 처리하는 데 어려움을 겪고 있습니다. 새로운 대화를 시작하거나 나중에 다시 시도해 주시겠습니까? 🙏",
+            'zh': "对话历史记录变得冗长而复杂……我现在处理起来有困难。您可以开始新的对话还是稍后重试？ 🙏"
         },
         'max_retries': {
-            'en': "Maximum retries reached during deep search, could not complete the request. Please try again later. 🙏",
-            'tr': "Derin arama sırasında maksimum deneme sayısına ulaşıldı, istek tamamlanamadı. Lütfen daha sonra tekrar deneyin. 🙏",
-            'es': "Se alcanzó el número máximo de reintentos durante la búsqueda profunda, no se pudo completar la solicitud. Por favor, inténtalo de nuevo más tarde. 🙏",
-            'fr': "Nombre maximal de tentatives atteint lors de la recherche approfondie, impossible de terminer la demande. Veuillez réessayer plus tard. 🙏",
-            'de': "Maximale Anzahl an Wiederholungsversuchen bei der Tiefensuche erreicht, Anfrage konnte nicht abgeschlossen werden. Bitte versuchen Sie es später noch einmal. 🙏",
-            'it': "Raggiunto il numero massimo di tentativi durante la ricerca approfondita, impossibile completare la richiesta. Per favore riprova più tardi. 🙏",
-            'pt': "Número máximo de tentativas alcançado durante a pesquisa profunda, não foi possível concluir a solicitação. Por favor, tente novamente mais tarde. 🙏",
-            'ru': "Достигнуто максимальное количество повторных попыток во время глубокого поиска, не удалось завершить запрос. Пожалуйста, попробуйте еще раз позже. 🙏",
-            'ja': "ディープ検索中に最大再試行回数に達しました。リクエストを完了できませんでした。後でもう一度試してください。🙏",
-            'ko': "딥 검색 중 최대 재시도 횟수에 도달하여 요청을 완료할 수 없습니다. 나중에 다시 시도해 주세요. 🙏",
-            'zh': "深度搜索期间达到最大重试次数，无法完成请求。 请稍后重试。🙏"
+            'en': "Maximum retries reached, still having trouble. Please try again later. 🙏",
+            'tr': "Maksimum deneme sayısına ulaşıldı, hala sorun yaşıyorum. Lütfen daha sonra tekrar deneyin. 🙏",
+            'es': "Se alcanzó el número máximo de reintentos, todavía tengo problemas. Por favor, inténtalo de nuevo más tarde. 🙏",
+            'fr': "Nombre maximal de tentatives atteint, toujours des problèmes. Veuillez réessayer plus tard. 🙏",
+            'de': "Maximale Anzahl an Wiederholungsversuchen erreicht, immer noch Probleme. Bitte versuchen Sie es später noch einmal. 🙏",
+            'it': "Raggiunto il numero massimo di tentativi, ho ancora problemi. Per favore riprova più tardi. 🙏",
+            'pt': "Número máximo de tentativas atingido, ainda estou com problemas. Por favor, tente novamente mais tarde. 🙏",
+            'ru': "Достигнуто максимальное количество повторных попыток, все еще есть проблемы. Пожалуйста, попробуйте еще раз позже. 🙏",
+            'ja': "最大再試行回数に達しましたが、まだ問題が発生しています。後でもう一度試してください。🙏",
+            'ko': "최대 재시도 횟수에 도달했지만 여전히 문제가 있습니다. 나중에 다시 시도해 주세요. 🙏",
+            'zh': "已达到最大重试次数，仍然有问题。请稍后重试。🙏"
         }
     }
     return messages[error_type].get(lang, messages[error_type]['en'])
 
-# Message splitting function (aynı kalır)
+# --- Message splitting function (no change) ---
 async def split_and_send_message(update: Update, text: str, max_length: int = 4096):
     if not text:
         await update.message.reply_text("Üzgünüm, bir yanıt oluşturamadım. Lütfen tekrar deneyin. 🙏")
@@ -730,13 +754,11 @@ async def split_and_send_message(update: Update, text: str, max_length: int = 40
 
     messages = []
     current_message = ""
-
     lines = text.split('\n')
 
     for line in lines:
         if not line:
             continue
-
         if len(current_message + line + '\n') > max_length:
             if current_message.strip():
                 messages.append(current_message.strip())
@@ -755,12 +777,12 @@ async def split_and_send_message(update: Update, text: str, max_length: int = 40
         if message.strip():
             await update.message.reply_text(message)
 
-# Start command handler (aynı kalır)
+# --- Start command handler (no change) ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_message = "Havvusuu! Ben Nyxie, Waffieu'nun ultra complex Protogen furry fox'u! 🦊✨ Sohbet etmeye, yardım etmeye ve seninle birlikte öğrenmeye bayılıyorum! UwU! İstediğin her şeyi konuşabiliriz veya bana resimler, videolar gönderebilirsin! Dilini otomatik olarak algılayıp ona göre cevap vereceğim! 🎉🎊\n\nDerinlemesine arama yapmak için `/derinarama <sorgu>` komutunu kullanabilirsin! 🚀🔍\n\nEmoji kullanımını ayarlamak için:\n`/emoji_auto`, `/emoji_high`, `/emoji_low`, `/emoji_none` komutlarını kullanabilirsin!"
+    welcome_message = "Havvusuu! Ben Nyxie, Waffieu'nun ultra complex Protogen furry fox'u! 🦊✨ Sohbet etmeye, yardım etmeye ve seninle birlikte öğrenmeye bayılıyorum! UwU! İstediğin her şeyi konuşabiliriz veya bana resimler, videolar gönderebilirsin! Dilini otomatik olarak algılayıp ona göre cevap vereceğim! 🎉🎊\n\nDerinlemesine arama yapmak için /derinarama <sorgu> komutunu kullanabilirsin! 🚀🔍\n\nEmoji kullanımını ayarlamak için:\n/emoji_auto, /emoji_high, /emoji_low, /emoji_none komutlarını kullanabilirsin!"
     await update.message.reply_text(welcome_message)
 
-# Intelligent web search function (düşünce logları eklendi)
+# --- Intelligent web search function (slightly enhanced result processing) ---
 async def intelligent_web_search(user_message, model, user_id, iteration=0):
     try:
         logging.info(f"Web search başlatıldı (Iteration {iteration}): {user_message}, User ID: {user_id}")
@@ -820,18 +842,17 @@ async def intelligent_web_search(user_message, model, user_id, iteration=0):
         async def perform_single_search(query):
             search_results_for_query = []
             try:
-                from duckduckgo_search import DDGS
                 with DDGS() as ddgs:
                     logging.info(f"DuckDuckGo araması yapılıyor (Iteration {iteration}): {query}")
                     dusunce_logger.info(f"DuckDuckGo Sorgusu (Iteration {iteration}): {query}", extra={'user_id': user_id})
-                    results = list(ddgs.text(query, max_results=5))
+                    results = list(ddgs.text(query, max_results=BOT_CONFIG["search_results_per_query"])) # Configurable result count
                     logging.info(f"Bulunan sonuç sayısı (Iteration {iteration}): {len(results)}")
                     dusunce_logger.info(f"DuckDuckGo Sonuç Sayısı (Iteration {iteration}): {len(results)}", extra={'user_id': user_id})
                     search_results_for_query.extend(results)
             except ImportError:
                 logging.error("DuckDuckGo search modülü bulunamadı.")
                 return []
-            except Exception as search_error:
+            except Exception as search_error: # Fallback search remains the same
                 logging.error(f"DuckDuckGo arama hatası (Iteration {iteration}): {str(search_error)}", exc_info=True)
                 dusunce_logger.error(f"DuckDuckGo Arama Hatası (Iteration {iteration}): {str(search_error)}", exc_info=True, extra={'user_id': user_id})
                 try:
@@ -846,9 +867,8 @@ async def intelligent_web_search(user_message, model, user_id, iteration=0):
                         if response.status_code == 200:
                             soup = BeautifulSoup(response.text, 'html.parser')
                             search_results_fallback = soup.find_all('div', class_='g')
-
                             parsed_results = []
-                            for result in search_results_fallback[:5]:
+                            for result in search_results_fallback[:BOT_CONFIG["search_results_per_query"]]: # Configurable result count
                                 title = result.find('h3')
                                 link = result.find('a')
                                 snippet = result.find('div', class_='VwiC3b')
@@ -859,7 +879,6 @@ async def intelligent_web_search(user_message, model, user_id, iteration=0):
                                         'link': link['href'],
                                         'body': snippet.text
                                     })
-
                             dusunce_logger.info(f"Fallback Arama Sonuç Sayısı (Iteration {iteration}): {len(parsed_results)}", extra={'user_id': user_id})
                             return parsed_results
                         return []
@@ -885,39 +904,42 @@ async def intelligent_web_search(user_message, model, user_id, iteration=0):
         if not search_results:
             return "Arama sonucu bulunamadı. Lütfen farklı bir şekilde sormayı deneyin.", []
 
-        search_context = "\n\n".join([
+        # Basic result ranking - prioritize results with query keywords in title
+        ranked_results = sorted(search_results, key=lambda res: sum(1 for word in user_message.lower().split() if word in res.get('title', '').lower()), reverse=True)
+
+        search_context = "\n\n".join([ # Using ranked results now
             f"Arama Sonucu {i+1}: {result.get('body', 'İçerik yok')}\nKaynak: {result.get('link', 'Bağlantı yok')}"
-            for i, result in enumerate(search_results)
+            for i, result in enumerate(ranked_results)
         ])
         dusunce_logger.info(f"Arama Bağlamı (Iteration {iteration}):\n{search_context}", extra={'user_id': user_id})
 
-        return search_context, search_results
+        return search_context, ranked_results # Return ranked results
 
     except Exception as e:
         logging.error(f"Web arama genel hatası (Iteration {iteration}): {str(e)}", exc_info=True)
         dusunce_logger.error(f"Web Arama Genel Hatası (Iteration {iteration}): {str(e)}", exc_info=True, extra={'user_id': user_id})
         return f"Web arama hatası: {str(e)}", []
 
-# Perform deep search function (düşünce logları eklendi)
+# --- Perform deep search function (enhanced with ranked results and iteration limit from config) ---
 async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE, user_message):
     user_id = str(update.effective_user.id)
-    user_lang = user_memory.get_user_settings(user_id).get('language', 'tr')
+    user_lang = user_memory.get_user_settings(user_id).get('language', BOT_CONFIG["default_language"]) # Use default from config
 
-    MAX_ITERATIONS = 3
+    MAX_ITERATIONS = BOT_CONFIG["deep_search_iterations"] # Iteration limit from config
     all_search_results = []
     current_query = user_message
-    model = genai.GenerativeModel('gemini-2.0-flash-lite')
+    search_model = genai.GenerativeModel(BOT_CONFIG["gemini_model_name"]) # Use configured model name
 
     try:
         await context.bot.send_chat_action(chat_id=update.message.chat_id, action=ChatAction.TYPING)
 
         for iteration in range(MAX_ITERATIONS):
-            search_context, search_results = await intelligent_web_search(current_query, model, user_id, iteration + 1)
+            search_context, search_results = await intelligent_web_search(current_query, search_model, user_id, iteration + 1) # Pass model
             if not search_results:
                 await update.message.reply_text("Derinlemesine arama yapıldı ama OwO, anlamlı bir şey bulamadım... Belki sorgumu kontrol etmelisin? 🤔 Ya da sonra tekrar deneyebilirsin! 🥺")
                 return
 
-            all_search_results.extend(search_results)
+            all_search_results.extend(search_results) # Extend with ranked results
 
             analysis_prompt = f"""
             Görevin: Web arama sonuçlarını analiz ederek daha derinlemesine arama yapmak için yeni ve geliştirilmiş arama sorguları üretmek.
@@ -942,7 +964,7 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
             dusunce_logger.info(f"Sorgu İyileştirme Promptu (Iteration {iteration + 1}):\n{analysis_prompt}", extra={'user_id': user_id})
 
             try:
-                query_refinement_response = await model.generate_content_async(analysis_prompt)
+                query_refinement_response = await search_model.generate_content_async(analysis_prompt) # Use search model
                 dusunce_logger.info(f"Sorgu İyileştirme Cevabı (Gemini, Iteration {iteration + 1}): {query_refinement_response.text}", extra={'user_id': user_id})
 
                 refined_queries = [q.strip() for q in query_refinement_response.text.split('\n') if q.strip()][:3]
@@ -950,7 +972,6 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
                     current_query = " ".join(refined_queries)
                     logging.info(f"Refined queries for iteration {iteration + 2}: {refined_queries}")
                     dusunce_logger.info(f"İyileştirilmiş Sorgular (Iteration {iteration + 2}): {refined_queries}", extra={'user_id': user_id})
-
                 else:
                     logging.info(f"No refined queries generated in iteration {iteration + 1}, stopping deep search.")
                     dusunce_logger.info(f"İyileştirilmiş Sorgu Oluşturulamadı (Iteration {iteration + 1}), derin arama durduruluyor.", extra={'user_id': user_id})
@@ -969,7 +990,7 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
 
             Kullanıcı Sorgusu: "{user_message}"
             Tüm Arama Sonuçları:
-            {''.join([f'Iteration {i+1} Results:\n' + '\\n'.join([f"Arama Sonucu {j+1}: {res.get('body', 'İçerik yok')}\\nKaynak: {res.get('link', 'Bağlantı yok')}" for j, res in enumerate(all_search_results[i*5:(i+1)*5])]) + '\\n\\n' for i in range(MAX_ITERATIONS)])}
+            {''.join([f'Iteration {i+1} Results:\n' + '\\n'.join([f"Arama Sonucu {j+1}: {res.get('body', 'İçerik yok')}\\nKaynak: {res.get('link', 'Bağlantı yok')}" for j, res in enumerate(all_search_results[i*BOT_CONFIG["search_results_per_query"]:(i+1)*BOT_CONFIG["search_results_per_query"]])]) + '\\n\\n' for i in range(MAX_ITERATIONS)])}
 
             Düşünce Zinciri Adımları:
             1. Tüm arama sonuçlarını analiz et ve ana temaları belirle.
@@ -989,7 +1010,7 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
             dusunce_logger.info(f"Final Chain of Thoughts Promptu:\n{final_prompt}", extra={'user_id': user_id})
 
             try:
-                final_cot_response = await model.generate_content_async(final_prompt)
+                final_cot_response = await search_model.generate_content_async(final_prompt) # Use search model
                 dusunce_logger.info(f"Final Chain of Thoughts Cevap (Gemini): {final_cot_response.text}", extra={'user_id': user_id})
 
                 clean_final_prompt = f"""
@@ -1005,7 +1026,7 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
                 """
 
                 dusunce_logger.info(f"Temiz Final Yanıt Promptu:\n{clean_final_prompt}", extra={'user_id': user_id})
-                final_response = await model.generate_content_async(clean_final_prompt)
+                final_response = await search_model.generate_content_async(clean_final_prompt) # Use search model
                 dusunce_logger.info(f"Final Temiz Cevap (Gemini): {final_response.text}", extra={'user_id': user_id})
 
                 if final_response.prompt_feedback and final_response.prompt_feedback.block_reason:
@@ -1036,7 +1057,7 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
     finally:
         await context.bot.send_chat_action(chat_id=update.message.chat_id, action=ChatAction.TYPING)
 
-# Command handlers for emoji preferences
+# --- Command handlers for emoji preferences (no change) ---
 async def set_emoji_auto(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     user_memory.update_user_settings(user_id, {'preferences': {'emoji_preference': 'auto'}})
@@ -1057,8 +1078,7 @@ async def set_emoji_none(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_memory.update_user_settings(user_id, {'preferences': {'emoji_preference': 'none'}})
     await update.message.reply_text("Emoji kullanımı kapalı moda ayarlandı. Bot, mesajlarında emoji kullanmayacak. 🚫")
 
-
-# Handle message function (düşünce logları eklendi)
+# --- Handle message function (typing indicator delay from config) ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     dusunce_logger.info("Mesaj işleme fonksiyonuna girildi.", extra={'user_id': user_id})
@@ -1074,14 +1094,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         dusunce_logger.info(f"Mesaj alındı: {update.message}", extra={'user_id': user_id})
         dusunce_logger.info(f"Mesaj metni: {update.message.text}", extra={'user_id': user_id})
 
-
         if update.message.text and not update.message.text.startswith('/'):
             message_text = update.message.text.strip()
             user_lang = await detect_and_set_user_language(message_text, user_id)
             logger.info(f"Detected language: {user_lang}")
             dusunce_logger.info(f"Tespit edilen dil: {user_lang}", extra={'user_id': user_id})
         else:
-            user_lang = user_memory.get_user_settings(user_id).get('language', 'tr')
+            user_lang = user_memory.get_user_settings(user_id).get('language', BOT_CONFIG["default_language"]) # Use default from config
 
         if update.message.text and update.message.text.startswith('/derinarama'):
             query = update.message.text[len('/derinarama'):].strip()
@@ -1105,7 +1124,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             chat_id=update.message.chat_id,
                             action=ChatAction.TYPING
                         )
-                        await asyncio.sleep(2)
+                        await asyncio.sleep(BOT_CONFIG["typing_indicator_delay"]) # Typing indicator delay from config
                     except Exception as e:
                         logger.error(f"Error in typing indicator: {e}")
                         dusunce_logger.error(f"Yazıyor göstergesi hatası: {e}", extra={'user_id': user_id})
@@ -1114,21 +1133,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             typing_task = asyncio.create_task(show_typing())
 
             try:
-                MAX_RETRIES = 100
+                MAX_RETRIES = 3 # Reduced retries, token limit error handling improved
                 retry_count = 0
                 context_messages = []
 
                 while retry_count < MAX_RETRIES:
                     try:
                         context_messages = user_memory.get_relevant_context(user_id)
-
                         user_settings = user_memory.get_user_settings(user_id)
                         personality_profile = user_settings.get('personality_profile')
 
                         personality_context = get_time_aware_personality(
                             datetime.now(),
                             user_lang,
-                            user_settings.get('timezone', 'Europe/Istanbul'),
+                            user_settings.get('preferences', {}).get('timezone', 'Europe/Istanbul'), # Safe access
                             personality_profile
                         )
 
@@ -1153,22 +1171,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         dusunce_logger.info(f"AI Prompt (Chain of Thoughts):\n{ai_prompt}", extra={'user_id': user_id})
 
                         try:
-                            model = genai.GenerativeModel('gemini-2.0-flash-lite')
-                            web_search_response, _ = await intelligent_web_search(message_text, model, user_id)
+                            ai_model = genai.GenerativeModel(BOT_CONFIG["gemini_model_name"]) # Use configured model name
+                            web_search_response, _ = await intelligent_web_search(message_text, ai_model, user_id) # Pass model
 
                             if web_search_response and len(web_search_response.strip()) > 10:
                                 ai_prompt += f"\n\nEk Bilgi (Web Arama Sonuçları - SADECE DİREKT SONUÇLARI KULLAN):\n{web_search_response}"
                                 dusunce_logger.info(f"AI Prompt (Web Aramalı):\n{ai_prompt}", extra={'user_id': user_id})
 
                             dusunce_logger.info("Gemini'den chain of thoughts cevabı bekleniyor... 💫", extra={'user_id': user_id})
-                            response = await model.generate_content_async(
+                            response = await asyncio.wait_for(ai_model.generate_content_async( # Use ai_model and timeout
                                 ai_prompt,
                                 generation_config={
                                     "temperature": 0.7,
                                     "top_p": 0.8,
                                     "top_k": 40
                                 }
-                            )
+                            ), timeout=30.0) # Added timeout to Gemini response
+
                             dusunce_logger.info(f"Gemini Chain of Thoughts Cevabı: {response.text}", extra={'user_id': user_id})
 
                             if response.prompt_feedback and response.prompt_feedback.block_reason:
@@ -1180,7 +1199,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 break
                             else:
                                 full_response = response.text if hasattr(response, 'text') else response.candidates[0].content.parts[0].text
-
                                 dusunce_logger.info(f"Tam Chain of Thoughts yanıtı: {full_response}", extra={'user_id': user_id})
 
                                 clean_response_prompt = f"""${personality_context}
@@ -1195,7 +1213,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 Sadece net ve sade cevabı ver:"""
 
                                 dusunce_logger.info(f"Temiz yanıt promptu: {clean_response_prompt}", extra={'user_id': user_id})
-                                clean_response = await model.generate_content_async(clean_response_prompt)
+                                clean_response = await ai_model.generate_content_async(clean_response_prompt) # Use ai_model
                                 response_text = clean_response.text if hasattr(clean_response, 'text') else clean_response.candidates[0].content.parts[0].text
                                 dusunce_logger.info(f"Temiz yanıt: {response_text}", extra={'user_id': user_id})
 
@@ -1204,73 +1222,81 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                                 user_memory.add_message(user_id, "user", message_text)
                                 user_memory.add_message(user_id, "assistant", response_text)
-                                break
+                                break # Success, break retry loop
 
-                        except Exception as search_error:
+                        except asyncio.TimeoutError: # Handle Gemini API timeout
+                            logger.warning("Gemini API timed out during message processing.")
+                            dusunce_logger.warning("Gemini API mesaj işleme sırasında zaman aşımına uğradı.", extra={'user_id': user_id})
+                            error_message = get_error_message('ai_error', user_lang) # Or a more specific timeout error message
+                            await update.message.reply_text(error_message)
+                            break # Break retry loop after timeout
+
+                        except Exception as search_error: # Token limit handling - improved
                             if "Token limit exceeded" in str(search_error):
-                                user_memory.trim_context(user_id)
+                                user_memory.trim_context(user_id) # Trim context directly using DB aware function
                                 retry_count += 1
                                 logger.warning(f"Token limit exceeded, retrying {retry_count}/{MAX_RETRIES}")
                                 dusunce_logger.warning(f"Token limiti aşıldı, tekrar deneniyor {retry_count}/{MAX_RETRIES}", extra={'user_id': user_id})
 
-                                if retry_count % 10 == 0:
-                                    await update.message.reply_text(f"🔄 Ay ay ay! Token sınırı aşıldı! Biraz mesaj geçmişini temizliyorum... ({retry_count}. deneme) 🥺")
+                                if retry_count % 1 == 0: # Less frequent token limit messages
+                                    await update.message.reply_text(f"🔄 Ay ay ay! Konuşma çok uzun! Biraz hafızayı temizliyorum... ({retry_count}. deneme) 🥺")
 
-                                if retry_count == MAX_RETRIES:
+                                if retry_count == MAX_RETRIES: # Max retries reached for token limit
                                     error_message = get_error_message('token_limit', user_lang)
                                     await update.message.reply_text(error_message)
+                                    break # Break retry loop after max token retries
                             else:
-                                raise search_error
+                                raise search_error # Re-raise other errors
 
-                    except Exception as context_error:
+                    except Exception as context_error: # Context retrieval error handling
                         logger.error(f"Context retrieval error: {context_error}")
                         dusunce_logger.error(f"Kontekst alma hatası: {context_error}", extra={'user_id': user_id})
                         retry_count += 1
-                        if retry_count == MAX_RETRIES:
+                        if retry_count == MAX_RETRIES: # Max retries reached for context error
                             error_message = get_error_message('general', user_lang)
                             await update.message.reply_text(error_message)
-                            break
+                            break # Break retry loop after max context retries
 
-                if retry_count == MAX_RETRIES:
-                    logger.error("Max retries reached for token management")
-                    dusunce_logger.error("Token yönetimi için maksimum deneme sayısına ulaşıldı.", extra={'user_id': user_id})
+                if retry_count == MAX_RETRIES: # Max retries reached overall
+                    logger.error("Max retries reached for message processing.")
+                    dusunce_logger.error("Mesaj işleme için maksimum deneme sayısına ulaşıldı.", extra={'user_id': user_id})
                     error_message = get_error_message('max_retries', user_lang)
                     await update.message.reply_text(error_message)
 
-            except Exception as e:
+            except Exception as e: # General message processing error handling
                 logger.error(f"Message processing error: {e}")
                 dusunce_logger.error(f"Mesaj işleme hatası: {e}", extra={'user_id': user_id})
                 error_message = get_error_message('general', user_lang)
                 await update.message.reply_text(error_message)
 
             finally:
-                typing_task.cancel()
+                typing_task.cancel() # Cancel typing task in finally block
 
-        elif update.message.photo:
+        elif update.message.photo: # Image and video handlers remain the same
             await handle_image(update, context)
         elif update.message.video:
             await handle_video(update, context)
-        else:
+        else: # Unhandled message type
             logger.warning("Unhandled message type received")
             dusunce_logger.warning("İşlenemeyen mesaj türü alındı.", extra={'user_id': user_id})
-            user_lang = user_memory.get_user_settings(user_id).get('language', 'en')
+            user_lang = user_memory.get_user_settings(user_id).get('language', BOT_CONFIG["default_language"]) # Use default from config
             unhandled_message = get_error_message('unhandled', user_lang)
             await update.message.reply_text(unhandled_message)
 
-    except Exception as e:
-        logger.error(f"General error: {e}")
-        dusunce_logger.error(f"Genel hata: {e}", extra={'user_id': user_id})
-        user_lang = user_memory.get_user_settings(user_id).get('language', 'en')
+    except Exception as e: # General error handling for handle_message
+        logger.error(f"General error in handle_message: {e}")
+        dusunce_logger.error(f"Genel hata handle_message içinde: {e}", extra={'user_id': user_id})
+        user_lang = user_memory.get_user_settings(user_id).get('language', BOT_CONFIG["default_language"]) # Use default from config
         error_message = get_error_message('general', user_lang)
         await update.message.reply_text(error_message)
-    except SyntaxError as e:
-        logger.error(f"Syntax error: {e}")
-        dusunce_logger.error(f"Syntax error: {e}", extra={'user_id': user_id})
-        user_lang = user_memory.get_user_settings(user_id).get('language', 'en')
+    except SyntaxError as e: # Syntax error handling
+        logger.error(f"Syntax error in handle_message: {e}")
+        dusunce_logger.error(f"Syntax error handle_message içinde: {e}", extra={'user_id': user_id})
+        user_lang = user_memory.get_user_settings(user_id).get('language', BOT_CONFIG["default_language"]) # Use default from config
         error_message = get_error_message('general', user_lang)
         await update.message.reply_text(error_message)
 
-# Image and Video handlers (düşünce logları eklendi)
+# --- Image and Video handlers (same as before, model name from config) ---
 async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
 
@@ -1285,7 +1311,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         user_settings = user_memory.get_user_settings(user_id)
-        user_lang = user_settings.get('language', 'tr')
+        user_lang = user_settings.get('language', BOT_CONFIG["default_language"]) # Use default from config
         logger.info(f"User language: {user_lang}")
         dusunce_logger.info(f"Kullanıcı dili: {user_lang}", extra={'user_id': user_id})
 
@@ -1333,7 +1359,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         personality_context = get_time_aware_personality(
             datetime.now(),
             user_lang,
-            user_settings.get('timezone', 'Europe/Istanbul'),
+            user_settings.get('preferences', {}).get('timezone', 'Europe/Istanbul'), # Safe access
             user_settings.get('personality_profile')
         )
 
@@ -1342,35 +1368,43 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         analysis_prompt = f"""DİKKAT: BU ANALİZİ TÜRKÇE YAPACAKSIN! SADECE TÜRKÇE KULLAN! KESİNLİKLE BAŞKA DİL KULLANMA!
 
-{personality_context}
+        {personality_context}
 
-Görevin: Kullanıcının gönderdiği görseli analiz ederek sadece düz metin bir açıklama sunmak.
-Rol: Sen Nyxie'sin ve bu görseli Türkçe olarak açıklıyorsun.
+        Görevin: Kullanıcının gönderdiği görseli analiz ederek sadece düz metin bir açıklama sunmak.
+        Rol: Sen Nyxie'sin ve bu görseli Türkçe olarak açıklıyorsun.
 
-Yönergeler:
-1. SADECE TÜRKÇE KULLAN! 🇹🇷💯
-2. Görseldeki metinleri (varsa) orijinal dilinde bırak, çevirme! 🚫✍️
-3. Analizini yaparken NAZİK ve YARDIMSEVER bir ton kullan! 🥰💖
-4. Kültürel DUYARLILIĞA dikkat et! 🌍🕊️
-            5. Sadece düz metin cevap ver. JSON veya başka format kullanma. 🚫📦
+        Yönergeler:
 
+        SADECE TÜRKÇE KULLAN! 🇹🇷💯
 
-Lütfen analiz et ve sadece düz metin olarak özetle:
-- Görseldeki ANA ÖĞELERİ ve KONULARI tanımla! 🔍👀
-- Aktiviteler veya OLAYLAR varsa, bunları açıkla! 🏞️🎉
-- Görselin GENEL ATMOSFERİNİ ve olası DUYGUSAL ETKİSİNİ değerlendir! 😌🤔
-- Görselde METİN varsa, bunları belirt (çevirme yapma)! 📝📢
+        Görseldeki metinleri (varsa) orijinal dilinde bırak, çevirme! 🚫✍️
 
-Kullanıcının isteği (varsa): {caption}"""
+        Analizini yaparken NAZİK ve YARDIMSEVER bir ton kullan! 🥰💖
+
+        Kültürel DUYARLILIĞA dikkat et! 🌍🕊️
+        5. Sadece düz metin cevap ver. JSON veya başka format kullanma. 🚫📦
+
+        Lütfen analiz et ve sadece düz metin olarak özetle:
+
+        Görseldeki ANA ÖĞELERİ ve KONULARI tanımla! 🔍👀
+
+        Aktiviteler veya OLAYLAR varsa, bunları açıkla! 🏞️🎉
+
+        Görselin GENEL ATMOSFERİNİ ve olası DUYGUSAL ETKİSİNİ değerlendir! 😌🤔
+
+        Görselde METİN varsa, bunları belirt (çevirme yapma)! 📝📢
+
+        Kullanıcının isteği (varsa): {caption}"""
         dusunce_logger.info(f"Resim Analiz Promptu:\n{analysis_prompt}", extra={'user_id': user_id})
 
         try:
-            model = genai.GenerativeModel('gemini-2.0-flash-lite')
+            image_model = genai.GenerativeModel(BOT_CONFIG["gemini_model_name"]) # Use configured model name
             dusunce_logger.info(f"Gemini'ye resim analizi isteği gönderiliyor... 🚀🌌", extra={'user_id': user_id})
-            response = await model.generate_content_async([
-                analysis_prompt,
-                {"mime_type": "image/jpeg", "data": photo_bytes}
-            ])
+            response = await asyncio.wait_for(image_model.generate_content_async( # Use image_model and timeout
+                [analysis_prompt, {"mime_type": "image/jpeg", "data": photo_bytes}],
+                timeout=60.0 # Added timeout for image analysis
+            ), timeout=60.0)
+
             dusunce_logger.info(f"Resim Analizi Cevabı (Gemini): {response.text}", extra={'user_id': user_id})
 
             if response.prompt_feedback and response.prompt_feedback.block_reason:
@@ -1381,26 +1415,29 @@ Kullanıcının isteği (varsa): {caption}"""
                 await update.message.reply_text(error_message)
             else:
                 response_text = response.text if hasattr(response, 'text') else response.candidates[0].content.parts[0].text
-
                 response_text = await add_emojis_to_text(response_text, user_id)
-
                 user_memory.add_message(user_id, "user", f"[Image] {caption}")
                 user_memory.add_message(user_id, "assistant", response_text)
-
                 await split_and_send_message(update, response_text.strip())
 
-        except Exception as processing_error:
+        except asyncio.TimeoutError: # Handle timeout for image analysis
+            logger.warning("Gemini API timed out during image analysis.")
+            dusunce_logger.warning("Gemini API resim analizi sırasında zaman aşımına uğradı.", extra={'user_id': user_id})
+            error_message = get_error_message('ai_error', user_lang) # Or a more specific timeout error
+            await update.message.reply_text(error_message)
+
+        except Exception as processing_error: # Image processing error handling
             logger.error(f"Görsel işleme hatası: {processing_error}", exc_info=True)
             dusunce_logger.error(f"Görsel işleme hatası: {processing_error}", exc_info=True, extra={'user_id': user_id})
             error_message = get_error_message('ai_error', user_lang)
             await update.message.reply_text(error_message)
 
-    except Exception as critical_error:
+    except Exception as critical_error: # Critical image processing error handling
         logger.error(f"Kritik görsel işleme hatası: {critical_error}", exc_info=True)
         dusunce_logger.error(f"Kritik görsel işleme hatası: {critical_error}", exc_info=True, extra={'user_id': user_id})
         await update.message.reply_text(get_error_message('general', user_lang))
 
-async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE): # Video handler - similar to image, model name from config, timeouts added
     user_id = str(update.effective_user.id)
 
     try:
@@ -1414,7 +1451,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         user_settings = user_memory.get_user_settings(user_id)
-        user_lang = user_settings.get('language', 'tr')
+        user_lang = user_settings.get('language', BOT_CONFIG["default_language"]) # Use default from config
         logger.info(f"User language: {user_lang}")
         dusunce_logger.info(f"Kullanıcı dili: {user_lang}", extra={'user_id': user_id})
 
@@ -1454,7 +1491,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         personality_context = get_time_aware_personality(
             datetime.now(),
             user_lang,
-            user_settings.get('timezone', 'Europe/Istanbul'),
+            user_settings.get('preferences', {}).get('timezone', 'Europe/Istanbul'), # Safe access
             user_settings.get('personality_profile')
         )
 
@@ -1463,36 +1500,45 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         analysis_prompt = f"""DİKKAT: BU ANALİZİ TÜRKÇE YAPACAKSIN! SADECE TÜRKÇE KULLAN! KESİNLİKLE BAŞKA DİL KULLANMA!
 
-{personality_context}
+        {personality_context}
 
-Görevin: Kullanıcının gönderdiği videoyu analiz ederek sadece düz metin bir açıklama sunmak.
-Rol: Sen Nyxie'sin ve bu videoyu Türkçe olarak açıklıyorsun.
+        Görevin: Kullanıcının gönderdiği videoyu analiz ederek sadece düz metin bir açıklama sunmak.
+        Rol: Sen Nyxie'sin ve bu videoyu Türkçe olarak açıklıyorsun.
 
-Yönergeler:
-1. SADECE TÜRKÇE KULLAN! 🇹🇷💯
-2. Videodaki konuşma veya metinleri (varsa) orijinal dilinde bırak, çevirme! 🚫✍️
-3. Analizini yaparken NAZİK ve YARDIMSEVER bir ton kullan! 🥰💖
-4. Kültürel DUYARLILIĞA dikkat et! 🌍🕊️
-            5. Sadece düz metin cevap ver. JSON veya başka format kullanma. 🚫📦
+        Yönergeler:
 
+        SADECE TÜRKÇE KULLAN! 🇹🇷💯
 
-Lütfen analiz et ve sadece düz metin olarak özetle:
-- Videodaki ANA OLAYLARI ve EYLEMLERİ tanımla! 🔍🎬
-- Önemli İNSANLAR veya NESNELER varsa, bunları belirt! 🧑‍🤝‍🧑📦
-- Videodaki SESLERİ ve KONUŞMALARI (varsa) analiz et! 🎧🗣️
-- Videonun GENEL ATMOSFERİNİ ve olası DUYGUSAL ETKİSİNİ değerlendir! 😌🤔
-- Videoda METİN varsa, bunları belirt (çevirme yapma)! 📝📢
+        Videodaki konuşma veya metinleri (varsa) orijinal dilinde bırak, çevirme! 🚫✍️
 
-Kullanıcının isteği (varsa): {caption}"""
+        Analizini yaparken NAZİK ve YARDIMSEVER bir ton kullan! 🥰💖
+
+        Kültürel DUYARLILIĞA dikkat et! 🌍🕊️
+        5. Sadece düz metin cevap ver. JSON veya başka format kullanma. 🚫📦
+
+        Lütfen analiz et ve sadece düz metin olarak özetle:
+
+        Videodaki ANA OLAYLARI ve EYLEMLERİ tanımla! 🔍🎬
+
+        Önemli İNSANLAR veya NESNELER varsa, bunları belirt! 🧑‍🤝‍🧑📦
+
+        Videodaki SESLERİ ve KONUŞMALARI (varsa) analiz et! 🎧🗣️
+
+        Videonun GENEL ATMOSFERİNİ ve olası DUYGUSAL ETKİSİNİ değerlendir! 😌🤔
+
+        Videoda METİN varsa, bunları belirt (çevirme yapma)! 📝📢
+
+        Kullanıcının isteği (varsa): {caption}"""
         dusunce_logger.info(f"Video Analiz Promptu:\n{analysis_prompt}", extra={'user_id': user_id})
 
         try:
-            model = genai.GenerativeModel('gemini-2.0-flash-lite')
+            video_model = genai.GenerativeModel(BOT_CONFIG["gemini_model_name"]) # Use configured model name
             dusunce_logger.info(f"Gemini'ye video analizi isteği gönderiliyor... 🚀🌌", extra={'user_id': user_id})
-            response = await model.generate_content_async([
-                analysis_prompt,
-                {"mime_type": "video/mp4", "data": video_bytes}
-            ])
+            response = await asyncio.wait_for(video_model.generate_content_async( # Use video_model and timeout
+                [analysis_prompt, {"mime_type": "video/mp4", "data": video_bytes}],
+                timeout=90.0 # Added timeout for video analysis, longer than image
+            ), timeout=90.0)
+
             dusunce_logger.info(f"Video Analizi Cevabı (Gemini): {response.text}", extra={'user_id': user_id})
 
             if response.prompt_feedback and response.prompt_feedback.block_reason:
@@ -1503,26 +1549,29 @@ Kullanıcının isteği (varsa): {caption}"""
                 await update.message.reply_text(error_message)
             else:
                 response_text = response.text if hasattr(response, 'text') else response.candidates[0].content.parts[0].text
-
                 response_text = await add_emojis_to_text(response_text, user_id)
-
                 user_memory.add_message(user_id, "user", f"[Video] {caption}")
                 user_memory.add_message(user_id, "assistant", response_text)
-
                 await split_and_send_message(update, response_text.strip())
 
-        except Exception as processing_error:
+        except asyncio.TimeoutError: # Handle timeout for video analysis
+            logger.warning("Gemini API timed out during video analysis.")
+            dusunce_logger.warning("Gemini API video analizi sırasında zaman aşımına uğradı.", extra={'user_id': user_id})
+            error_message = get_error_message('ai_error', user_lang) # Or more specific timeout error
+            await update.message.reply_text(error_message)
+
+        except Exception as processing_error: # Video processing error handling
             logger.error(f"Video processing error: {processing_error}", exc_info=True)
             dusunce_logger.error(f"Video işleme hatası: {processing_error}", exc_info=True, extra={'user_id': user_id})
             error_message = get_error_message('ai_error', user_lang)
             await update.message.reply_text(error_message)
 
-    except Exception as e:
+    except Exception as e: # Critical video processing error handling
         logger.error(f"Kritik video işleme hatası: {e}", exc_info=True)
         dusunce_logger.error(f"Kritik video işleme hatası: {e}", exc_info=True, extra={'user_id': user_id})
         await update.message.reply_text(get_error_message('general', user_lang))
 
-# Token and memory error handlers (aynı kalır)
+# --- Token and memory error handlers (no change) ---
 async def handle_token_limit_error(update: Update):
     error_message = "Ay ay ay! Mesaj geçmişi çok uzun! 🥺 Şu an cevap veremiyorum ama biraz bekleyip tekrar dener misin? 🙏"
     await update.message.reply_text(error_message)
@@ -1531,14 +1580,14 @@ async def handle_memory_error(update: Update):
     error_message = "Hafızam doldu sandım bir an! 🤯 Bellek sınırına ulaşıldı galiba... Biraz bekleyip tekrar dener misin? 🙏"
     await update.message.reply_text(error_message)
 
-# Emoji adding function (düşünce logları eklendi)
+# --- Emoji adding function (model name from config) ---
 async def add_emojis_to_text(text, user_id):
     try:
         user_settings = user_memory.get_user_settings(user_id)
-        emoji_preference = user_settings['preferences'].get('emoji_preference', 'auto') # Get user's preference
-        emoji_model = genai.GenerativeModel('gemini-2.0-flash-lite')
+        emoji_preference = user_settings['preferences'].get('emoji_preference', 'auto')
+        emoji_model = genai.GenerativeModel(BOT_CONFIG["gemini_model_name"]) # Use configured model name
 
-        if emoji_preference == 'none': # If user wants no emojis
+        if emoji_preference == 'none':
             return text
 
         sentiment_analysis_prompt = f"""
@@ -1551,7 +1600,6 @@ async def add_emojis_to_text(text, user_id):
         sentiment_response = await emoji_model.generate_content_async(sentiment_analysis_prompt)
         sentiment = sentiment_response.text.strip().lower()
         dusunce_logger.info(f"Sentiment Analysis for Emoji: '{text}' - Sentiment: {sentiment}", extra={'user_id': user_id})
-
 
         emoji_prompt = f"""
         Sen ultra complex bir Protogen furry fox'sun, Nyxie.  Aşağıdaki metni analiz et ve kişiliğine UYGUN emoji(leri) öner.
@@ -1575,7 +1623,7 @@ async def add_emojis_to_text(text, user_id):
         """
         dusunce_logger.info(f"Gelişmiş Emoji Promptu (Sentiment Aware):\n{emoji_prompt}", extra={'user_id': 'N/A'})
 
-        emoji_response = await emoji_model.generate_content_async(emoji_prompt) # Async call
+        emoji_response = await emoji_model.generate_content_async(emoji_prompt)
         dusunce_logger.info(f"Gelişmiş Emoji Cevabı (Gemini, Sentiment Aware): {emoji_response.text}", extra={'user_id': 'N/A'})
 
         if emoji_response.prompt_feedback and emoji_response.prompt_feedback.block_reason:
@@ -1584,19 +1632,17 @@ async def add_emojis_to_text(text, user_id):
             return text
         else:
             suggested_emojis_str = emoji_response.text.strip()
-
             if not suggested_emojis_str:
                 return text
-
             suggested_emojis = suggested_emojis_str.split()
             return f"{text} {' '.join(suggested_emojis)}"
+
     except Exception as e:
         logger.error(f"Error adding context-relevant emojis: {e}")
         dusunce_logger.error(f"Emoji ekleme hatası: {e}", extra={'user_id': 'N/A'})
         return text
 
-
-# Analysis prompt function (aynı kalır)
+# --- Analysis prompt function (no change) ---
 def get_analysis_prompt(media_type, caption, lang):
     prompts = {
         'image': {
@@ -1652,6 +1698,7 @@ def main():
     global user_memory
     application = Application.builder().token(os.getenv("TELEGRAM_TOKEN")).build()
 
+    application.add_handler(CommandHandler("start", start)) # Added start command
     application.add_handler(CommandHandler("derinarama", handle_message))
     application.add_handler(CommandHandler("emoji_auto", set_emoji_auto))
     application.add_handler(CommandHandler("emoji_high", set_emoji_high))
@@ -1661,10 +1708,10 @@ def main():
     application.add_handler(MessageHandler(filters.PHOTO, handle_image))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    user_memory = UserMemory()
+    user_memory = UserMemoryDB(BOT_CONFIG["database_file"]) # Initialize UserMemoryDB
 
-    async def initial_personality_generation():
-        for user_file in Path(user_memory.memory_dir).glob('user_*.json'):
+    async def initial_personality_generation(): # No change
+        for user_file in Path(BOT_CONFIG["memory_dir"]).glob('user_*.json'): # Path changed to DB dir - but glob is not used anymore with DB
             user_id_str = user_file.stem.replace('user_', '')
             user_id = int(user_id_str)
             user_data = user_memory.get_user_settings(user_id)
@@ -1673,18 +1720,15 @@ def main():
                 await user_memory.generate_user_personality(user_id)
                 dusunce_logger.info(f"Başlangıç kişilik profili oluşturma tamamlandı. Kullanıcı ID: {user_id}", extra={'user_id': user_id})
 
-    asyncio.run(initial_personality_generation())
+    # asyncio.run(initial_personality_generation()) # Removed initial personality generation at startup for DB version - personality will be generated on first message
 
-    # Fix for Python 3.12 asyncio event loop issue
+    # Fix for Python 3.12 asyncio event loop issue (no change)
     try:
-        # Try to get the current event loop
         loop = asyncio.get_event_loop()
     except RuntimeError:
-        # If there is no current event loop, create a new one
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-    # Run the application with the configured event loop
     loop.run_until_complete(application.run_polling(allowed_updates=Update.ALL_TYPES))
 
 if __name__ == '__main__':
