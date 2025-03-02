@@ -24,8 +24,8 @@ BOT_CONFIG = {
     "gemini_model_name": 'gemini-2.0-flash-lite',
     "max_message_history": 1000000,  # Number of recent messages to keep in memory per user
     "max_tokens_memory": 1048576, # Max tokens for message history before trimming
-    "search_results_per_query": 5, # Number of search results to fetch per query
-    "deep_search_iterations": 3, # Number of deep search iterations
+    "search_results_per_query": 35, # Number of search results to fetch per query
+    "deep_search_iterations": 2, # Number of deep search iterations
     "emoji_suggestion_preference_levels": ['none', 'low', 'auto', 'high'], # Valid emoji preference levels
     "default_language": "tr", # Default language if detection fails
     "log_file": 'bot_logs.log',
