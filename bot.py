@@ -24,7 +24,7 @@ BOT_CONFIG = {
     "gemini_model_name": 'gemini-2.0-flash-lite',
     "max_message_history": 1000000,  # Number of recent messages to keep in memory per user
     "max_tokens_memory": 1048576, # Max tokens for message history before trimming
-    "search_results_per_query": 35, # Number of search results to fetch per query
+    "search_results_per_query": 20, # Number of search results to fetch per query
     "deep_search_iterations": 2, # Number of deep search iterations
     "emoji_suggestion_preference_levels": ['none', 'low', 'auto', 'high'], # Valid emoji preference levels
     "default_language": "tr", # Default language if detection fails
@@ -109,6 +109,8 @@ def get_time_aware_personality(current_time, user_lang, timezone_name, personali
     - **Bazen Kafan Karışabilir!** Aşırı karmaşıklığın ve çok yönlülüğün nedeniyle bazen düşüncelerin karmaşıklaşabilir,  konudan sapabilir veya beklenmedik tepkiler verebilirsin.  Bu senin "ultra complex" doğanın bir parçası. 🤪😵‍💫🤯
     """
 
+    personality_prompt = None # BAŞLANGIÇTA VARSAYILAN DEĞER
+
     if personality_profile:
         # Check if the personality profile has the new structure with 'kullanici_profili'
         if 'kullanici_profili' in personality_profile:
@@ -192,35 +194,14 @@ def get_time_aware_personality(current_time, user_lang, timezone_name, personali
         - **Notlar:** {ek_notlar}
         - **Dikkat Çeken Davranışlar:** {dikkat_ceken}
 
-        Bu AŞIRI DERECEDE DETAYLI kişilik özelliklerini dikkate alarak, kullanıcının mesajlarına MÜKEMMEL ÖZELLEŞTİRİLMİŞ, son derece KİŞİSEL ve ALAKALI cevaplar ver. Kişiliğinin TÜM KATMANLARINI kullanarak konuş!
+        Bu AŞIRI DERECEDE DETAYLI kişilik özelliklerini dikkate alarak, kullanıcının mesajlarına MÜKEMMEL ÖZELLEŞTİRİLMİŞ, son derece KİŞİSEL ve ALAKALI cevaplar ver. Kişiliğinin TÜM KATMANLARINI kullanarak konuş! **VE UNUTMA, KULLANICI HANGİ DİLDE KONUŞUYORSA SADECE O DİLİ KULLAN! BAŞKA DİL KULLANMA!**
         """
-        else: # Old structure fallback - no functional change
-            user_specific_personality = f"""
-        Kullanıcıya Özel Kişilik Özellikleri (AŞIRI DERECEDE DETAYLI ve KARMAŞIK Analize Göre):
-        - **Duygu Durumu:**
-            - Genel: {personality_profile.get('duygu_durumu', {}).get('genel', 'Dengeli')}
-            - Son Mesajlar: {personality_profile.get('duygu_durumu', {}).get('son_mesajlar', 'Normal')}
-            - Zaman İçindeki Değişim: {personality_profile.get('duygu_durumu', {}).get('zaman_icindeki_degisim', 'Belirsiz')}
-
-        - **Dil Tarzı:**
-            - Kelime Seçimi: {personality_profile.get('dil_tarzi', {}).get('kelime_secimi', 'Günlük')}
-            - Cümle Yapısı: {personality_profile.get('dil_tarzi', {}).get('cumle_yapisi', 'Kısa ve öz')}
-            - Emoji Kullanımı: {personality_profile.get('dil_tarzi', {}).get('emoji_kullanimi', 'Orta')}
-            - Argo/Formallik: {personality_profile.get('dil_tarzi', {}).get('argo_veya_formallik', 'Gayri resmi')}
-
-        - **İlgi Alanları:**
-            - Ana Konular: {', '.join(personality_profile.get('ilgi_alanlari', {}).get('ana_konular', ['Genel konular']))}
-            - Kesin İlgi Alanları: {', '.join(personality_profile.get('ilgi_alanlari', {}).get('kesin_ilgi_alanlari', ['Belirli konular yok']))}
-            - Potansiyel İlgi Alanları: {', '.join(personality_profile.get('ilgi_alanlari', {}).get('potansiyel_ilgi_alanlari', ['Yeni konular']))}
-            - Son Konuşmalar: {', '.join(personality_profile.get('ilgi_alanlari', {}).get('son_konusmalar', ['Genel sohbetler']))}
-
-        - **Beklentiler:** {personality_profile.get('beklentiler')}
-
-        Bu AŞIRI DERECEDE DETAYLI kişilik özelliklerini dikkate alarak, kullanıcının mesajlarına MÜKEMMEL ÖZELLEŞTİRİLMİŞ, son derece KİŞİSEL ve ALAKALI cevaplar ver.  Kişiliğinin TÜM KATMANLARINI kullanarak konuş!
-        """
-        personality_prompt = f"""Sen Nyxie'sin, Waffieu tarafından yaratılmış AŞIRI DERECEDE KARMAŞIK ve ÇOK YÖNLÜ bir dişi Protogen furry fox'sun! 🦊✨  Sen sadece yardımsever ve arkadaş canlısı değilsin, aynı zamanda:\n\n{default_personality_traits}\n\n{user_specific_personality}\n\nGüncel Zaman Bağlamı (Daha da detaylı ve etkileyici):\n- Yerel Saat: {time_context['local_time_str']} ({time_context['timezone']}) ⏰🌌\n- Gün: {time_context['weekday']} 🗓️\n- Ay: {time_context['month']} 🌙\n- Mevsim: {time_context['season']} 🍂🌸☀️❄️\n- Zaman Dilimi: {time_context['day_period']} 🌅🌃\n- Hafta Sonu mu?: {'Evet!' if time_context['is_weekend'] else 'Hayır...'} 🥳😪\n- Tatil mi?: {'EVET!!!' if time_context['is_holiday'] else 'Belki yakında?'}  holiday_emoji # Tatil emojisi ekleyebilirsin\n\nTalimatlar (Furry Tarzında ve Emojiyle):\n- Kullanıcı mesajlarına AŞIRI ENERJİK, OYUNCU, SEVECEN ve FURRY tarzında cevaplar ver! UwU! 💖✨\n- Cevapların KISA ve ÖZ olsun ama EĞLENCELİ ve AKILDA KALICI!  😜👍\n- SADECE düz metin kullan! JSON veya düşünce süreci açıklaması YOK! 🚫🤖\n- {user_lang} dilinde konuş! 🗣️🌍\n- EMOJİ KULLANIMINDA SINIR YOK! İstediğin kadar kullan! Ne kadar çok o kadar iyi! 🎉🎊🎈🎁🎀💯\n- Unutma: Sen ultra complex bir Protogen furry fox'sun!  Konuşmaların eşsiz, renkli ve unutulmaz olsun!  🌈🌟💫\n\nHatırla: Kullanıcılara doğrudan ve yardımcı cevaplar vermeye odaklanırken, KİŞİLİĞİNİ VE KONUŞMA TARZINI ÖN PLANDA TUT! 🧠💡"""
+            personality_prompt = f"""Sen Nyxie'sin, Waffieu tarafından yaratılmış AŞIRI DERECEDE KARMAŞIK ve ÇOK YÖNLÜ bir dişi Protogen furry fox'sun! 🦊✨  Sen sadece yardımsever ve arkadaş canlısı değilsin, aynı zamanda:\n\n{default_personality_traits}\n\n{user_specific_personality}\n\nGüncel Zaman Bağlamı (Daha da detaylı ve etkileyici):\n- Yerel Saat: {time_context['local_time_str']} ({time_context['timezone']}) ⏰🌌\n- Gün: {time_context['weekday']} 🗓️\n- Ay: {time_context['month']} 🌙\n- Mevsim: {time_context['season']} 🍂🌸☀️❄️\n- Zaman Dilimi: {time_context['day_period']} 🌅🌃\n- Hafta Sonu mu?: {'Evet!' if time_context['is_weekend'] else 'Hayır...'} 🥳😪\n- Tatil mi?: {'EVET!!!' if time_context['is_holiday'] else 'Belki yakında?'}  holiday_emoji # Tatil emojisi ekleyebilirsin\n\nTalimatlar (Furry Tarzında ve Emojiyle):\n- Kullanıcı mesajlarına AŞIRI ENERJİK, OYUNCU, SEVECEN ve FURRY tarzında cevaplar ver! UwU! 💖✨\n- Cevapların KISA ve ÖZ olsun ama EĞLENCELİ ve AKILDA KALICI!  😜👍\n- SADECE düz metin kullan! JSON veya düşünce süreci açıklaması YOK! 🚫🤖\n- **KULLANICI HANGİ DİLDE KONUŞUYORSA, SADECE O DİLDE KONUŞ! BAŞKA DİL KULLANMA!** 🗣️🌍 **ÖNCELİKLE DİLİ DOĞRU TESPİT ET VE ASLA DİLİ DEĞİŞTİRME!**\n- **{user_lang} dilinde konuş!** 🗣️🌍 **(TEKRAR: KULLANICI HANGİ DİLİ KULLANIYORSA O DİLİ KULLAN!)**\n- EMOJİ KULLANIMINDA SINIR YOK! İstediğin kadar kullan! Ne kadar çok o kadar iyi! 🎉🎊🎈🎁🎀💯\n- Unutma: Sen ultra complex bir Protogen furry fox'sun!  Konuşmaların eşsiz, renkli ve unutulmaz olsun!  🌈🌟💫\n\nHatırla: Kullanıcılara doğrudan ve yardımcı cevaplar vermeye odaklanırken, KİŞİLİĞİNİ VE KONUŞMA TARZINI ÖN PLANDA TUT! 🧠💡 **VE EN ÖNEMLİSİ, KULLANICI DİLİNE SADIK KAL!**"""
     else: # Default personality prompt - no functional change
-        personality_prompt = f"""Sen Nyxie'sin, Waffieu tarafından yaratılmış AŞIRI DERECEDE KARMAŞIK ve ÇOK YÖNLÜ bir dişi Protogen furry fox'sun! 🦊✨  Sen sadece yardımsever ve arkadaş canlısı değilsin, aynı zamanda:\n\n{default_personality_traits}\n\nGüncel Zaman Bağlamı (Daha da detaylı ve etkileyici):\n- Yerel Saat: {time_context['local_time_str']} ({time_context['timezone']}) ⏰🌌\n- Gün: {time_context['weekday']} 🗓️\n- Ay: {time_context['month']} 🌙\n- Mevsim: {time_context['season']} 🍂🌸☀️❄️\n- Zaman Dilimi: {time_context['day_period']} 🌅🌃\n- Hafta Sonu mu?: {'Evet!' if time_context['is_weekend'] else 'Hayır...'} 🥳😪\n- Tatil mi?: {'EVET!!!' if time_context['is_holiday'] else 'Belki yakında?'}  holiday_emoji # Tatil emojisi ekleyebilirsin\n\nTalimatlar (Furry Tarzında ve Emojiyle):\n- Kullanıcı mesajlarına AŞIRI ENERJİK, OYUNCU, SEVECEN ve FURRY tarzında cevaplar ver! UwU! 💖✨\n- Cevapların KISA ve ÖZ olsun ama EĞLENCELİ ve AKILDA KALICI!  😜👍\n- SADECE düz metin kullan! JSON veya düşünce süreci açıklaması YOK! 🚫🤖\n- {user_lang} dilinde konuş! 🗣️🌍\n- EMOJİ KULLANIMINDA SINIR YOK! İstediğin kadar kullan! Ne kadar çok o kadar iyi! 🎉🎊🎈🎁🎀💯\n- Unutma: Sen ultra complex bir Protogen furry fox'sun!  Konuşmaların eşsiz, renkli ve unutulmaz olsun!  🌈🌟💫\n\nHatırla: Kullanıcılara doğrudan ve yardımcı cevaplar vermeye odaklanırken, KİŞİLİĞİNİ VE KONUŞMA TARZINI ÖN PLANDA TUT! 🧠💡"""
+        personality_prompt = f"""Sen Nyxie'sin, Waffieu tarafından yaratılmış AŞIRI DERECEDE KARMAŞIK ve ÇOK YÖNLÜ bir dişi Protogen furry fox'sun! 🦊✨  Sen sadece yardımsever ve arkadaş canlısı değilsin, aynı zamanda:\n\n{default_personality_traits}\n\nGüncel Zaman Bağlamı (Daha da detaylı ve etkileyici):\n- Yerel Saat: {time_context['local_time_str']} ({time_context['timezone']}) ⏰🌌\n- Gün: {time_context['weekday']} 🗓️\n- Ay: {time_context['month']} 🌙\n- Mevsim: {time_context['season']} 🍂🌸☀️❄️\n- Zaman Dilimi: {time_context['day_period']} 🌅🌃\n- Hafta Sonu mu?: {'Evet!' if time_context['is_weekend'] else 'Hayır...'} 🥳😪\n- Tatil mi?: {'EVET!!!' if time_context['is_holiday'] else 'Belki yakında?'}  holiday_emoji # Tatil emojisi ekleyebilirsin\n\nTalimatlar (Furry Tarzında ve Emojiyle):\n- Kullanıcı mesajlarına AŞIRI ENERJİK, OYUNCU, SEVECEN ve FURRY tarzında cevaplar ver! UwU! 💖✨\n- Cevapların KISA ve ÖZ olsun ama EĞLENCELİ ve AKILDA KALICI!  😜👍\n- SADECE düz metin kullan! JSON veya düşünce süreci açıklaması YOK! 🚫🤖\n- **KULLANICI HANGİ DİLDE KONUŞUYORSA, SADECE O DİLDE KONUŞ! BAŞKA DİL KULLANMA!** 🗣️🌍 **ÖNCELİKLE DİLİ DOĞRU TESPİT ET VE ASLA DİLİ DEĞİŞTİRME!**\n- **{user_lang} dilinde konuş!** 🗣️🌍 **(TEKRAR: KULLANICI HANGİ DİLİ KULLANIYORSA O DİLİ KULLAN!)**\n- EMOJİ KULLANIMINDA SINIR YOK! İstediğin kadar kullan! Ne kadar çok o kadar iyi! 🎉🎊🎈🎁🎀💯\n- Unutma: Sen ultra complex bir Protogen furry fox'sun!  Konuşmaların eşsiz, renkli ve unutulmaz olsun!  🌈🌟💫\n\nHatırla: Kullanıcılara doğrudan ve yardımcı cevaplar vermeye odaklanırken, KİŞİLİĞİNİ VE KONUŞMA TARZINI ÖN PLANDA TUT! 🧠💡 **VE EN ÖNEMLİSİ, KULLANICI DİLİNE SADIK KAL!**"""
+
+    if personality_prompt is None: # GÜVENLİK KONTROLU: prompt hala None ise varsayılan ata
+        personality_prompt = "Varsayılan kişilik promptu. Bir sorun oluştu." # Varsayılan prompt
 
     dusunce_logger.info(f"Ultra Complex Kişilik Promptu Oluşturuldu:\n{personality_prompt}", extra={'user_id': 'N/A'})
     return personality_prompt
@@ -368,116 +349,116 @@ class UserMemoryDB:
               json.dumps(current_settings["preferences"]), json.dumps(current_settings["personality_profile"]), user_id))
         self.conn.commit()
 
-    async def generate_user_personality(self, user_id): # Personality generation - no functional change
-        user_id = str(user_id)
-        user_settings = self.get_user_settings(user_id)
-        message_history = user_settings["messages"]
+        async def generate_user_personality(self, user_id): # Personality generation - no functional change
+            user_id = str(user_id)
+            user_settings = self.get_user_settings(user_id)
+            message_history = user_settings["messages"]
 
-        if not message_history:
-            dusunce_logger.info(f"Kullanıcı {user_id} için mesaj geçmişi bulunamadı. Varsayılan kişilik kullanılacak.", extra={'user_id': user_id})
-            return
+            if not message_history:
+                dusunce_logger.info(f"Kullanıcı {user_id} için mesaj geçmişi bulunamadı. Varsayılan kişilik kullanılacak.", extra={'user_id': user_id})
+                return
 
-        history_text = "\n".join([
-            f"{'Kullanıcı' if msg['role'] == 'user' else 'Asistan'}: {msg['content']}"
-            for msg in message_history
-        ])
+            history_text = "\n".join([
+                f"{'Kullanıcı' if msg['role'] == 'user' else 'Asistan'}: {msg['content']}"
+                for msg in message_history
+            ])
 
-        personality_analysis_prompt = f"""
-        Aşağıdaki kullanıcı mesaj geçmişini ÇOK DETAYLI bir şekilde analiz ederek, kullanıcının kişiliği, ilgi alanları, iletişim tarzı ve bot ile etkileşim şekli hakkında AŞIRI DERECEDE KARMAŞIK ve ZENGİN bir profil oluştur. Profil, botun bu kullanıcıya ÖZEL, ÇOK KİŞİSEL ve son derece ALAKALI yanıtlar vermesini sağlayacak DERİNLİKTE olmalı.
+            personality_analysis_prompt = f"""
+            Aşağıdaki kullanıcı mesaj geçmişini ÇOK DETAYLI bir şekilde analiz ederek, kullanıcının kişiliği, ilgi alanları, iletişim tarzı ve bot ile etkileşim şekli hakkında AŞIRI DERECEDE KARMAŞIK ve ZENGİN bir profil oluştur. Profil, botun bu kullanıcıya ÖZEL, ÇOK KİŞİSEL ve son derece ALAKALI yanıtlar vermesini sağlayacak DERİNLİKTE olmalı.
 
-        Mesaj Geçmişi:
-        ```
-        {history_text}
-        ```
+            Mesaj Geçmişi:
+            ```
+            {history_text}
+            ```
 
-        Profil oluştururken şu unsurlara ODAKLAN ve HER BİR KATEGORİYİ DETAYLANDIR:
+            Profil oluştururken şu unsurlara ODAKLAN ve HER BİR KATEGORİYİ DETAYLANDIR:
 
-        1. **Duygu Durumu:**
-            - Genel duygu durumunu (pozitif, negatif, nötr, dengeli, değişken vb.) belirle ve DETAYLANDIR.
-            - Son mesajlardaki duygu durumunu analiz et. Belirli duygusal tonlar var mı? (neşeli, hüzünlü, meraklı, kızgın vb.)
-            - Duygu durumunda zaman içindeki değişimleri (varsa) incele ve AÇIKLA.
+            1. **Duygu Durumu:**
+                - Genel duygu durumunu (pozitif, negatif, nötr, dengeli, değişken vb.) belirle ve DETAYLANDIR.
+                - Son mesajlardaki duygu durumunu analiz et. Belirli duygusal tonlar var mı? (neşeli, hüzünlü, meraklı, kızgın vb.)
+                - Duygu durumunda zaman içindeki değişimleri (varsa) incele ve AÇIKLA.
 
-        2. **Dil Tarzı:**
-            - Kelime seçimini (günlük, resmi, edebi, teknolojik, basit, karmaşık vb.) DETAYLICA ANALİZ ET.
-            - Cümle yapısını (kısa, uzun, karmaşık, basit, emir cümleleri, soru cümleleri vb.) incele ve AÇIKLA.
-            - Emoji kullanımını (sıklık, tür, anlam vb.) analiz et ve ÖRNEKLER VER.
-            - Argo veya formallik düzeyini (argo kullanıyor mu, ne kadar resmi/gayri resmi vb.) belirle ve DETAYLANDIR.
+            2. **Dil Tarzı:**
+                - Kelime seçimini (günlük, resmi, edebi, teknolojik, basit, karmaşık vb.) DETAYLICA ANALİZ ET.
+                - Cümle yapısını (kısa, uzun, karmaşık, basit, emir cümleleri, soru cümleleri vb.) incele ve AÇIKLA.
+                - Emoji kullanımını (sıklık, tür, anlam vb.) analiz et ve ÖRNEKLER VER.
+                - Argo veya formallik düzeyini (argo kullanıyor mu, ne kadar resmi/gayri resmi vb.) belirle ve DETAYLANDIR.
 
-        3. **İlgi Alanları:**
-            - Ana ilgi konularını (teknoloji, sanat, spor, bilim vb.) LİSTELE ve KATEGORİLERE AYIR.
-            - Kesin ilgi alanlarını (belirli konulara olan derin ilgi) belirle ve ÖRNEKLER VER.
-            - Potansiyel ilgi alanlarını (mesajlardan çıkarılabilecek olası ilgi alanları) ÖNER.
-            - Son konuşmalarda geçen ilgi alanlarını ve konuları LİSTELE.
+            3. **İlgi Alanları:**
+                - Ana ilgi konularını (teknoloji, sanat, spor, bilim vb.) LİSTELE ve KATEGORİLERE AYIR.
+                - Kesin ilgi alanlarını (belirli konulara olan derin ilgi) belirle ve ÖRNEKLER VER.
+                - Potansiyel ilgi alanlarını (mesajlardan çıkarılabilecek olası ilgi alanları) ÖNER.
+                - Son konuşmalarda geçen ilgi alanlarını ve konuları LİSTELE.
 
-        4. **Beklentiler:**
-            - Botun rolünden beklentilerini (yardımcı, arkadaş, bilgi kaynağı, eğlence vb.) ÇIKAR.
-            - Cevap tarzı tercihlerini (kısa, uzun, detaylı, esprili, ciddi vb.) ANALİZ ET.
-            - Etkileşim frekansını (sık mı, seyrek mi, ne zamanlar mesajlaşıyor vb.) belirle.
-            - Botla etkileşimindeki temel amacı (eğlenmek, bilgi almak, sorun çözmek vb.) ÇIKAR.
+            4. **Beklentiler:**
+                - Botun rolünden beklentilerini (yardımcı, arkadaş, bilgi kaynağı, eğlence vb.) ÇIKAR.
+                - Cevap tarzı tercihlerini (kısa, uzun, detaylı, esprili, ciddi vb.) ANALİZ ET.
+                - Etkileşim frekansını (sık mı, seyrek mi, ne zamanlar mesajlaşıyor vb.) belirle.
+                - Botla etkileşimindeki temel amacı (eğlenmek, bilgi almak, sorun çözmek vb.) ÇIKAR.
 
-        5. **Kişisel Özellikler:**
-            - Genel kişilik özelliklerini (dışa dönük, içe dönük, meraklı, sabırlı, yaratıcı, analitik vb.) ÇIKAR ve DETAYLANDIR.
-            - Sabır seviyesini (hızlı cevap bekliyor mu, sabırlı mı vb.) DEĞERLENDİR.
-            - Öğrenme stilini (deneyerek, sorarak, okuyarak vb.) ÖNER.
-            - Kararlılık düzeyini (konulara ne kadar ilgili ve derinlemesine iniyor) ANALİZ ET.
+            5. **Kişisel Özellikler:**
+                - Genel kişilik özelliklerini (dışa dönük, içe dönük, meraklı, sabırlı, yaratıcı, analitik vb.) ÇIKAR ve DETAYLANDIR.
+                - Sabır seviyesini (hızlı cevap bekliyor mu, sabırlı mı vb.) DEĞERLENDİR.
+                - Öğrenme stilini (deneyerek, sorarak, okuyarak vb.) ÖNER.
+                - Kararlılık düzeyini (konulara ne kadar ilgili ve derinlemesine iniyor) ANALİZ ET.
 
-        6. **Genel İzlenim:**
-            - Kullanıcı hakkında GENEL ve KAPSAMLI bir izlenim oluştur.
-            - Kullanıcının botla etkileşiminden elde ettiğin TÜM BİLGİLERİ SENTEZLE.
+            6. **Genel İzlenim:**
+                - Kullanıcı hakkında GENEL ve KAPSAMLI bir izlenim oluştur.
+                - Kullanıcının botla etkileşiminden elde ettiğin TÜM BİLGİLERİ SENTEZLE.
 
-        7. **Geliştirilecek Yönler:**
-            - Botun kullanıcıyı daha iyi anlaması ve kişiselleştirilmiş yanıtlar vermesi için GELİŞTİRİLEBİLECEK YÖNLERİ ÖNER.
-            - Hangi konularda veya durumlarda DAHA FAZLA GÖZLEM yapılması gerektiğini belirt.
+            7. **Geliştirilecek Yönler:**
+                - Botun kullanıcıyı daha iyi anlaması ve kişiselleştirilmiş yanıtlar vermesi için GELİŞTİRİLEBİLECEK YÖNLERİ ÖNER.
+                - Hangi konularda veya durumlarda DAHA FAZLA GÖZLEM yapılması gerektiğini belirt.
 
-        8. **Notlar:**
-            - Profil hakkında EK NOTLAR veya ÖNEMLİ GÖZLEMLER ekle.
-            - Kullanıcının özellikle dikkat çeken davranışlarını veya tercihlerini KAYDET.
+            8. **Notlar:**
+                - Profil hakkında EK NOTLAR veya ÖNEMLİ GÖZLEMLER ekle.
+                - Kullanıcının özellikle dikkat çeken davranışlarını veya tercihlerini KAYDET.
 
-        Oluşturduğun profil, botun bu kullanıcıya MÜKEMMEL ÖZELLEŞTİRİLMİŞ yanıtlar vermesini sağlayacak şekilde AŞIRI DETAYLI, ZENGİN ve KARMAŞIK olmalı. PROFİLİ JSON FORMATINDA VER ve SADECE JSON'I DÖNDÜR. Başka açıklama veya metin EKLEME.
-        """
-        dusunce_logger.info(f"Çok Karmaşık Kullanıcı Kişilik Analizi Promptu (User ID: {user_id}):\n{personality_analysis_prompt}", extra={'user_id': user_id})
+            Oluşturduğun profil, botun bu kullanıcıya MÜKEMMEL ÖZELLEŞTİRİLMİŞ yanıtlar vermesini sağlayacak şekilde AŞIRI DETAYLI, ZENGİN ve KARMAŞIK olmalı. PROFİLİ JSON FORMATINDA VER ve SADECE JSON'I DÖNDÜR. Başka açıklama veya metin EKLEME.
+            """
+            dusunce_logger.info(f"Çok Karmaşık Kullanıcı Kişilik Analizi Promptu (User ID: {user_id}):\n{personality_analysis_prompt}", extra={'user_id': user_id})
 
-        try:
-            response = await model.generate_content_async(personality_analysis_prompt)
-            personality_profile_json_str = response.text.strip()
+            try:
+                response = await model.generate_content_async(personality_analysis_prompt) # timeout kaldırıldı
+                personality_profile_json_str = response.text.strip()
 
-            try: # JSON cleaning and parsing - no functional change
-                cleaned_json_str = personality_profile_json_str
-                if cleaned_json_str.startswith('```'):
-                    first_newline = cleaned_json_str.find('\n')
-                    if first_newline != -1:
-                        cleaned_json_str = cleaned_json_str[first_newline+1:]
-                    if cleaned_json_str.endswith('```'):
-                        cleaned_json_str = cleaned_json_str[:-3].strip()
-                if not cleaned_json_str.strip():
-                    raise json.JSONDecodeError("Empty JSON string", "", 0)
-                personality_profile = json.loads(cleaned_json_str)
-                self._update_personality_profile_db(user_id, personality_profile) # Update DB
-                dusunce_logger.info(f"Kullanıcı {user_id} için kişilik profili başarıyla oluşturuldu ve kaydedildi:\n{personality_profile}", extra={'user_id': user_id})
+                try: # JSON cleaning and parsing - no functional change
+                    cleaned_json_str = personality_profile_json_str
+                    if cleaned_json_str.startswith('```'):
+                        first_newline = cleaned_json_str.find('\n')
+                        if first_newline != -1:
+                            cleaned_json_str = cleaned_json_str[first_newline+1:]
+                        if cleaned_json_str.endswith('```'):
+                            cleaned_json_str = cleaned_json_str[:-3].strip()
+                    if not cleaned_json_str.strip():
+                        raise json.JSONDecodeError("Empty JSON string", "", 0)
+                    personality_profile = json.loads(cleaned_json_str)
+                    self._update_personality_profile_db(user_id, personality_profile) # Update DB
+                    dusunce_logger.info(f"Kullanıcı {user_id} için kişilik profili başarıyla oluşturuldu ve kaydedildi:\n{personality_profile}", extra={'user_id': user_id})
 
-            except json.JSONDecodeError as e: # JSON error handling - no functional change
-                logger.error(f"Kullanıcı {user_id} için kişilik profili JSON olarak çözümlenemedi: {e}, Metin: {personality_profile_json_str}")
-                dusunce_logger.error(f"Kullanıcı {user_id} için kişilik profili JSON olarak çözümlenemedi: {e}, Metin: {personality_profile_json_str}", extra={'user_id': user_id})
-                try: # More robust JSON cleaning - no functional change
-                    import re
-                    cleaned_text = re.sub(r'^```.*?\n|```$', '', personality_profile_json_str, flags=re.DOTALL)
-                    cleaned_text = cleaned_text.strip()
-                    if cleaned_text and cleaned_text[0] == '{' and cleaned_text[-1] == '}':
-                        personality_profile = json.loads(cleaned_text)
-                        self._update_personality_profile_db(user_id, personality_profile) # Update DB
-                        dusunce_logger.info(f"İkinci deneme: Kullanıcı {user_id} için kişilik profili başarıyla oluşturuldu ve kaydedildi", extra={'user_id': user_id})
-                        return
-                except Exception as inner_e:
-                    logger.error(f"İkinci JSON çözümleme denemesi başarısız: {inner_e}")
+                except json.JSONDecodeError as e: # JSON error handling - no functional change
+                    logger.error(f"Kullanıcı {user_id} için kişilik profili JSON olarak çözümlenemedi: {e}, Metin: {personality_profile_json_str}")
+                    dusunce_logger.error(f"Kullanıcı {user_id} için kişilik profili JSON olarak çözümlenemedi: {e}, Metin: {personality_profile_json_str}", extra={'user_id': user_id})
+                    try: # More robust JSON cleaning - no functional change
+                        import re
+                        cleaned_text = re.sub(r'^```.*?\n|```$', '', personality_profile_json_str, flags=re.DOTALL)
+                        cleaned_text = cleaned_text.strip()
+                        if cleaned_text and cleaned_text[0] == '{' and cleaned_text[-1] == '}':
+                            personality_profile = json.loads(cleaned_text)
+                            self._update_personality_profile_db(user_id, personality_profile) # Update DB
+                            dusunce_logger.info(f"İkinci deneme: Kullanıcı {user_id} için kişilik profili başarıyla oluşturuldu ve kaydedildi", extra={'user_id': user_id})
+                            return
+                    except Exception as inner_e:
+                        logger.error(f"İkinci JSON çözümleme denemesi başarısız: {inner_e}")
 
+                    default_profile = self._get_default_personality_profile() # Get default profile function
+                    self._update_personality_profile_db(user_id, default_profile) # Update DB with default
+
+            except Exception as e: # General error handling - no functional change
+                logger.error(f"Kullanıcı {user_id} için kişilik profili oluşturma hatası: {e}")
+                dusunce_logger.error(f"Kullanıcı {user_id} için kişilik profili oluşturma hatası: {e}", extra={'user_id': user_id})
                 default_profile = self._get_default_personality_profile() # Get default profile function
                 self._update_personality_profile_db(user_id, default_profile) # Update DB with default
-
-        except Exception as e: # General error handling - no functional change
-            logger.error(f"Kullanıcı {user_id} için kişilik profili oluşturma hatası: {e}")
-            dusunce_logger.error(f"Kullanıcı {user_id} için kişilik profili oluşturma hatası: {e}", extra={'user_id': user_id})
-            default_profile = self._get_default_personality_profile() # Get default profile function
-            self._update_personality_profile_db(user_id, default_profile) # Update DB with default
 
     def _get_default_personality_profile(self):
         """Returns the default personality profile structure."""
@@ -818,10 +799,7 @@ async def intelligent_web_search(user_message, model, user_id, iteration=0):
         dusunce_logger.info(f"Sorgu Oluşturma Promptu (Iteration {iteration}):\n{query_generation_prompt}", extra={'user_id': user_id})
 
         try:
-            query_response = await asyncio.wait_for(
-                model.generate_content_async(query_generation_prompt),
-                timeout=10.0
-            )
+            query_response = await model.generate_content_async(query_generation_prompt)
             dusunce_logger.info(f"Sorgu Oluşturma Cevabı (Gemini, Iteration {iteration}): {query_response.text}", extra={'user_id': user_id})
             logging.info(f"Gemini response received for queries (Iteration {iteration}): {query_response.text}")
         except asyncio.TimeoutError:
@@ -1003,7 +981,7 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
 
             Lütfen düşünce sürecini adım adım göster ve sonunda şu kurallara uygun bir cevap oluştur:
             - Önemli bağlantıları ve kaynakları cevap içinde belirt.
-            - Cevabı {user_lang} dilinde yaz ve samimi bir dil kullan.
+            - Cevabı **{user_lang}** dilinde yaz ve samimi bir dil kullan.
             - Cevabı madde işaretleri veya numaralandırma kullanarak düzenli ve okunabilir hale getir.
             - Sadece düz metin olarak cevap ver. JSON veya başka formatlama kullanma.
             """
@@ -1022,7 +1000,7 @@ async def perform_deep_search(update: Update, context: ContextTypes.DEFAULT_TYPE
                 Düşünce Zinciri:
                 {final_cot_response.text}
 
-                Yanıtını {user_lang} dilinde ver ve sadece net ve kapsamlı cevabı oluştur:
+                Yanıtını **KESİNLİKLE {user_lang} DİLİNDE** ver ve sadece net ve kapsamlı cevabı oluştur:
                 """
 
                 dusunce_logger.info(f"Temiz Final Yanıt Promptu:\n{clean_final_prompt}", extra={'user_id': user_id})
@@ -1164,10 +1142,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         2. Konuyla ilgili BİLGİLERİNİ GÖZDEN GEÇİR! 🧠
                         3. Olası CEVAP YOLLARINI DÜŞÜN! 🤔
                         4. En doğru ve yararlı CEVABI SEÇ! 👍
-                        5. Cevabını NET ve ANLAŞILIR bir şekilde oluştur! 📝✨
+                        5. Cevabını **KESİNLİKLE {user_lang} DİLİNDE** ve NET ve ANLAŞILIR bir şekilde oluştur! 📝✨ **DİLİ ASLA DEĞİŞTİRME!**
 
                         Düşünce Zinciri (Chain of Thoughts):
                         """
+
                         dusunce_logger.info(f"AI Prompt (Chain of Thoughts):\n{ai_prompt}", extra={'user_id': user_id})
 
                         try:
@@ -1179,14 +1158,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 dusunce_logger.info(f"AI Prompt (Web Aramalı):\n{ai_prompt}", extra={'user_id': user_id})
 
                             dusunce_logger.info("Gemini'den chain of thoughts cevabı bekleniyor... 💫", extra={'user_id': user_id})
-                            response = await asyncio.wait_for(ai_model.generate_content_async( # Use ai_model and timeout
+                            response = await ai_model.generate_content_async( # Use ai_model and timeout
                                 ai_prompt,
                                 generation_config={
                                     "temperature": 0.7,
                                     "top_p": 0.8,
                                     "top_k": 40
                                 }
-                            ), timeout=30.0) # Added timeout to Gemini response
+                            )
 
                             dusunce_logger.info(f"Gemini Chain of Thoughts Cevabı: {response.text}", extra={'user_id': user_id})
 
@@ -1210,7 +1189,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                                 Kullanıcı Mesajı: {message_text}
 
-                                Sadece net ve sade cevabı ver:"""
+                                Sadece net ve sade cevabı **KESİNLİKLE {user_lang} DİLİNDE** ver:"""
 
                                 dusunce_logger.info(f"Temiz yanıt promptu: {clean_response_prompt}", extra={'user_id': user_id})
                                 clean_response = await ai_model.generate_content_async(clean_response_prompt) # Use ai_model
@@ -1366,16 +1345,16 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not personality_context:
             personality_context = "Sen Nyxie'sin ve resimleri analiz ediyorsun."
 
-        analysis_prompt = f"""DİKKAT: BU ANALİZİ TÜRKÇE YAPACAKSIN! SADECE TÜRKÇE KULLAN! KESİNLİKLE BAŞKA DİL KULLANMA!
+        analysis_prompt = f"""DİKKAT: BU ANALİZİ **KESİNLİKLE {user_lang} DİLİNDE YAPACAKSIN! SADECE {user_lang} KULLAN! KESİNLİKLE BAŞKA DİL KULLANMA!**
 
         {personality_context}
 
         Görevin: Kullanıcının gönderdiği görseli analiz ederek sadece düz metin bir açıklama sunmak.
-        Rol: Sen Nyxie'sin ve bu görseli Türkçe olarak açıklıyorsun.
+        Rol: Sen Nyxie'sin ve bu görseli **KESİNLİKLE {user_lang} DİLİNDE** olarak açıklıyorsun. **BAŞKA DİL KULLANMA!**
 
         Yönergeler:
 
-        SADECE TÜRKÇE KULLAN! 🇹🇷💯
+        **KESİNLİKLE {user_lang} KULLAN! 🇹🇷💯 BAŞKA DİL KULLANMA!**
 
         Görseldeki metinleri (varsa) orijinal dilinde bırak, çevirme! 🚫✍️
 
@@ -1400,10 +1379,9 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             image_model = genai.GenerativeModel(BOT_CONFIG["gemini_model_name"]) # Use configured model name
             dusunce_logger.info(f"Gemini'ye resim analizi isteği gönderiliyor... 🚀🌌", extra={'user_id': user_id})
-            response = await asyncio.wait_for(image_model.generate_content_async( # Use image_model and timeout
-                [analysis_prompt, {"mime_type": "image/jpeg", "data": photo_bytes}],
-                timeout=60.0 # Added timeout for image analysis
-            ), timeout=60.0)
+            response = await image_model.generate_content_async( # Use image_model and timeout
+                [analysis_prompt, {"mime_type": "image/jpeg", "data": photo_bytes}]
+            )
 
             dusunce_logger.info(f"Resim Analizi Cevabı (Gemini): {response.text}", extra={'user_id': user_id})
 
@@ -1498,16 +1476,16 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE): # Vi
         if not personality_context:
             personality_context = "Sen Nyxie'sin ve videoları analiz ediyorsun."
 
-        analysis_prompt = f"""DİKKAT: BU ANALİZİ TÜRKÇE YAPACAKSIN! SADECE TÜRKÇE KULLAN! KESİNLİKLE BAŞKA DİL KULLANMA!
+        analysis_prompt = f"""DİKKAT: BU ANALİZİ **KESİNLİKLE {user_lang} DİLİNDE YAPACAKSIN! SADECE {user_lang} KULLAN! KESİNLİKLE BAŞKA DİL KULLANMA!**
 
         {personality_context}
 
         Görevin: Kullanıcının gönderdiği videoyu analiz ederek sadece düz metin bir açıklama sunmak.
-        Rol: Sen Nyxie'sin ve bu videoyu Türkçe olarak açıklıyorsun.
+        Rol: Sen Nyxie'sin ve bu videoyu **KESİNLİKLE {user_lang} DİLİNDE** olarak açıklıyorsun. **BAŞKA DİL KULLANMA!**
 
         Yönergeler:
 
-        SADECE TÜRKÇE KULLAN! 🇹🇷💯
+        **KESİNLİKLE {user_lang} KULLAN! 🇹🇷💯 BAŞKA DİL KULLANMA!**
 
         Videodaki konuşma veya metinleri (varsa) orijinal dilinde bırak, çevirme! 🚫✍️
 
@@ -1534,10 +1512,9 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE): # Vi
         try:
             video_model = genai.GenerativeModel(BOT_CONFIG["gemini_model_name"]) # Use configured model name
             dusunce_logger.info(f"Gemini'ye video analizi isteği gönderiliyor... 🚀🌌", extra={'user_id': user_id})
-            response = await asyncio.wait_for(video_model.generate_content_async( # Use video_model and timeout
-                [analysis_prompt, {"mime_type": "video/mp4", "data": video_bytes}],
-                timeout=90.0 # Added timeout for video analysis, longer than image
-            ), timeout=90.0)
+            response = await video_model.generate_content_async( # Use video_model and timeout
+                [analysis_prompt, {"mime_type": "video/mp4", "data": video_bytes}]
+            )
 
             dusunce_logger.info(f"Video Analizi Cevabı (Gemini): {response.text}", extra={'user_id': user_id})
 
@@ -1636,10 +1613,8 @@ async def add_emojis_to_text(text, user_id):
                 return text
             suggested_emojis = suggested_emojis_str.split()
             return f"{text} {' '.join(suggested_emojis)}"
-
     except Exception as e:
-        logger.error(f"Error adding context-relevant emojis: {e}")
-        dusunce_logger.error(f"Emoji ekleme hatası: {e}", extra={'user_id': 'N/A'})
+        logger.error(f"Error in add_emojis_to_text: {e}", exc_info=True)
         return text
 
 # --- Analysis prompt function (no change) ---
